@@ -1,0 +1,8 @@
+{
+  "name": "wildwood",
+  "version": "2.0.0",
+  "description": "Build apps with Wildwood authentication, AI chat, messaging, and payments using pre-built, production-ready components",
+  "author": "WildwoodWorks",
+  "homepage": "https://www.wildwoodworks.com.co",
+  "repository": "https://github.com/WildwoodWorks/WildwoodComponents.AITools"
+}
