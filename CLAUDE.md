@@ -1,4 +1,4 @@
-# WildwoodComponents.AITools - Claude Code Plugin
+# WildwoodComponents.Claude - Claude Code Plugin
 
 ## What This Plugin Does
 

@@ -1,17 +1,17 @@
-# WildwoodComponents.AITools
+# WildwoodComponents.Claude
 
 A Claude Code plugin that connects Claude to the **Wildwood platform** — giving you tools and skills to build apps with pre-built, production-ready components for authentication, AI chat, messaging, payments, and more.
 
 ## Installation
 
 ```
-/plugin install github:WildwoodWorks/WildwoodComponents.AITools
+/plugin install github:WildwoodWorks/WildwoodComponents.Claude
 ```
 
 Or clone and reference locally:
 
 ```bash
-git clone https://github.com/WildwoodWorks/WildwoodComponents.AITools.git
+git clone https://github.com/WildwoodWorks/WildwoodComponents.Claude.git
 ```
 
 ## What You Get
@@ -59,7 +59,7 @@ The core value of the Wildwood platform is **pre-built, production-ready UI comp
 
 ## Quick Start
 
-1. Install the plugin: `/plugin install github:WildwoodWorks/WildwoodComponents.AITools`
+1. Install the plugin: `/plugin install github:WildwoodWorks/WildwoodComponents.Claude`
 2. Run `/wildwood-setup` to create your account and first app
 3. Run `/wildwood-integrate` to add components to your project
 4. Run `/wildwood-deploy-app` to deploy
