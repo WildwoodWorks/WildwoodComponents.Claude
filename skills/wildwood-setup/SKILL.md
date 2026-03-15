@@ -1,7 +1,6 @@
 ---
 name: wildwood-setup
 description: Create a Wildwood account and configure your first app
-skill-version: 2.0.0
 ---
 
 You are helping the user get started with the Wildwood platform. Follow these steps:

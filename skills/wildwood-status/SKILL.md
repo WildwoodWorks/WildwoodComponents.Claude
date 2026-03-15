@@ -1,7 +1,6 @@
 ---
 name: wildwood-status
 description: Check Wildwood app status, deployments, and quota usage
-skill-version: 2.0.0
 ---
 
 You are helping the user check the status of their Wildwood platform resources. Gather and display a comprehensive status report.

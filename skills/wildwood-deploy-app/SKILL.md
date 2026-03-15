@@ -1,7 +1,6 @@
 ---
 name: wildwood-deploy-app
 description: Build and deploy an app to Wildwood hosting at apps.wildwoodworks.com.co
-skill-version: 2.0.0
 ---
 
 You are helping the user deploy their application to the Wildwood App Hosting Platform. Follow these steps carefully:
