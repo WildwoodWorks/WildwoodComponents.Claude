@@ -16,7 +16,7 @@ This plugin connects Claude Code to the **Wildwood platform**, giving you tools 
 |-------|---------|
 | `/wildwood-setup` | Create a Wildwood account and configure your first app |
 | `/wildwood-integrate` | Add WildwoodComponents SDK to any project (React, React Native, Blazor, Node.js) |
-| `/wildwood-deploy-app` | Build and deploy your app to Wildwood hosting |
+| `/wildwood-deploy-app` | Build and deploy your app to popular hosting services (Vercel, Netlify, Azure, Railway, Fly.io, etc.) |
 | `/wildwood-status` | Check app status, deployments, and quota usage |
 
 ## MCP Server Connection

@@ -1,7 +1,6 @@
 ---
 name: wildwood-status
 description: Check Wildwood app status, deployments, and quota usage
-skill-version: 2.0.0
 ---
 
 You are helping the user check the status of their Wildwood platform resources. Gather and display a comprehensive status report.
@@ -49,13 +48,7 @@ Use `wildwood_list_app_tiers` to show:
 - Feature limits per tier
 - Current tier (if subscription data available)
 
-## Step 5: Deployment Status (if applicable)
-
-Check for active deployments via REST API:
-- `GET /api/hosting/deployments` → List deployments
-- Show: slug, URL, status, runtime, last deployed, storage used
-
-## Step 6: Report Summary
+## Step 5: Report Summary
 
 Present a clean status report:
 
@@ -77,9 +70,6 @@ Usage (Last 30 Days):
   Users:       {total}
   AI Requests: {count}
   Messages:    {count}
-
-Deployments:
-  {slug}.apps.wildwoodworks.com.co — Active (v{version})
 
 Admin Portal: https://www.wildwoodworks.com.co
 ```

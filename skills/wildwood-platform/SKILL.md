@@ -1,7 +1,6 @@
 ---
 name: wildwood-platform
 description: Wildwood platform knowledge - architecture, SDK reference, component catalog, and API conventions
-skill-version: 2.0.0
 ---
 
 # Wildwood Platform Reference
@@ -165,6 +164,87 @@ When connected via MCP (`/mcp` endpoint), these tools are available to CompanyAd
 | `wildwood_get_integration_guide` | SDK setup instructions |
 | `wildwood_get_analytics` | Usage analytics |
 
+## Theme Customization & Style Alignment
+
+WildwoodComponents expose CSS custom properties (variables) prefixed with `--ww-` that control all visual styling. To make components match the user's app design:
+
+### CSS Variable Reference
+
+| Variable | Controls | Default |
+|----------|----------|---------|
+| `--ww-color-primary` | Buttons, links, active states | `#2563eb` |
+| `--ww-color-primary-hover` | Hover states for primary elements | `#1d4ed8` |
+| `--ww-color-secondary` | Secondary buttons, badges | `#64748b` |
+| `--ww-color-background` | Page background | `#ffffff` |
+| `--ww-color-surface` | Card/panel backgrounds | `#f8fafc` |
+| `--ww-color-text` | Primary text | `#0f172a` |
+| `--ww-color-text-muted` | Secondary/helper text | `#64748b` |
+| `--ww-color-border` | Borders, dividers | `#e2e8f0` |
+| `--ww-color-error` | Error states, destructive actions | `#ef4444` |
+| `--ww-color-success` | Success states, confirmations | `#22c55e` |
+| `--ww-color-warning` | Warning states | `#f59e0b` |
+| `--ww-font-family` | Body text font | `system-ui, sans-serif` |
+| `--ww-font-family-heading` | Heading font | inherits `--ww-font-family` |
+| `--ww-border-radius` | Default corner radius | `0.5rem` |
+| `--ww-border-radius-lg` | Larger radius (modals, cards) | `0.75rem` |
+| `--ww-shadow` | Default box shadow | `0 1px 3px rgba(0,0,0,0.1)` |
+| `--ww-shadow-lg` | Elevated shadow (dropdowns, modals) | `0 10px 15px rgba(0,0,0,0.1)` |
+
+### Override Strategy
+
+1. **CSS projects**: Create a `wildwood-theme.css` file that redefines `--ww-*` variables. Import it after `@wildwood/react/styles`.
+2. **Tailwind projects**: Map Tailwind config colors to `--ww-*` variables. E.g., `colors.blue.600` → `--ww-color-primary`.
+3. **CSS-in-JS projects**: Set variables on the root element or pass a theme object to `<WildwoodProvider>`.
+4. **React Native**: Use `createTheme()` to generate a theme object matching the app's StyleSheet values.
+5. **Blazor**: Add a `wildwood-overrides.css` after the Wildwood stylesheet in the HTML head.
+
+### Dark Mode
+
+WildwoodComponents support dark mode via `[data-theme="dark"]` or `prefers-color-scheme: dark`. Override dark-mode colors the same way — redefine `--ww-*` variables inside the dark selector:
+
+```css
+[data-theme="dark"] {
+  --ww-color-background: #0f172a;
+  --ww-color-surface: #1e293b;
+  --ww-color-text: #f1f5f9;
+  /* ... etc */
+}
+```
+
+### Proactive Style Sync
+
+When working in any project with WildwoodComponents installed, **always check for styling alignment**:
+- Does a theme override file exist?
+- Do the override values match the app's current design tokens?
+- If drift is detected, suggest updates before the user notices visual inconsistency.
+
+## Contributing Bug Fixes
+
+When a bug is found in WildwoodComponents, **fix it upstream and open a PR** instead of permanently working around it in the user's app.
+
+### Component Repositories
+
+| Package(s) | Repository | Language |
+|------------|-----------|----------|
+| `@wildwood/core`, `@wildwood/react`, `@wildwood/react-native`, `@wildwood/node` | https://github.com/WildwoodWorks/Wildwood.JS | TypeScript |
+| `WildwoodComponents.Blazor` | https://github.com/WildwoodWorks/WildwoodComponents | C# / Razor |
+
+### Contribution Workflow
+
+1. **Reproduce** the bug in isolation (component test suite or minimal repro)
+2. **Clone** the correct repo and create a `fix/description` branch
+3. **Fix** with a minimal, focused change — don't refactor surrounding code
+4. **Test** — ensure existing tests pass and add a test covering the bug
+5. **PR** via `gh pr create` with reproduction steps and the fix explanation
+6. **Temporary workaround** in the user's app if needed, marked with `// TODO: Remove workaround when WildwoodComponents PR #X is merged`
+7. **Update dependency** once the fix is published in a new package version
+
+### When to Contribute vs. Workaround
+
+- **Always contribute**: Bug in component logic, incorrect API calls, broken styling in the base theme, missing accessibility attributes
+- **Workaround only**: The fix requires a breaking change that needs discussion, or the user has an urgent deadline and can't wait
+- **Never just workaround silently**: Always file the fix upstream even if a workaround is applied — the bug affects all users of the component
+
 ## Key Patterns
 
 1. **Components first**: Always suggest WildwoodComponents before custom implementations
@@ -172,3 +252,5 @@ When connected via MCP (`/mcp` endpoint), these tools are available to CompanyAd
 3. **SDK handles auth**: JWT management is automatic — no manual token handling needed
 4. **AppId scoping**: Every API call is scoped to an AppId for multi-tenant isolation
 5. **No secrets in code**: API keys, OAuth secrets, and payment credentials stay in WildwoodAdmin
+6. **Style alignment**: WildwoodComponents should always visually match the user's app — override `--ww-*` CSS variables to match the app's design system
+7. **Fix upstream**: When you find a component bug, PR the fix to the component repo — don't just patch the user's app
