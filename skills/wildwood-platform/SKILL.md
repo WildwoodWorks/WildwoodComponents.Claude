@@ -146,23 +146,118 @@ builder.Services.AddWildwoodComponents(options => {
 
 ## MCP Tools Available
 
-When connected via MCP (`/mcp` endpoint), these tools are available to CompanyAdmin users:
+When connected via MCP (`/mcp` endpoint), these tools are available to CompanyAdmin users. 46 tools total (20 read, 26 write). All write tools require `confirm: true` and auto-snapshot before changes. Individual tools can be disabled by platform admins.
+
+### Read Tools (20)
 
 | Tool | Description |
 |------|-------------|
 | `wildwood_get_app_info` | Current app configuration |
 | `wildwood_list_apps` | All company apps |
 | `wildwood_get_ai_config` | AI configurations (no API keys) |
-| `wildwood_get_auth_config` | Auth provider configuration |
-| `wildwood_list_available_providers` | Available auth/AI/payment providers |
-| `wildwood_list_users` | Company users |
+| `wildwood_get_auth_config` | Auth provider configuration and password policy |
+| `wildwood_list_available_providers` | Available auth, AI, and payment providers |
+| `wildwood_list_users` | Company users with roles |
 | `wildwood_get_messaging_config` | Messaging settings |
 | `wildwood_get_payment_config` | Payment config (no secrets) |
-| `wildwood_get_disclaimer_config` | Disclaimer configuration |
-| `wildwood_list_app_tiers` | Tiers and features |
-| `wildwood_list_component_configs` | All component status |
-| `wildwood_get_integration_guide` | SDK setup instructions |
-| `wildwood_get_analytics` | Usage analytics |
+| `wildwood_get_disclaimer_config` | Disclaimer display configuration |
+| `wildwood_list_app_tiers` | Tiers with features, limits, and pricing |
+| `wildwood_list_component_configs` | All component configuration status |
+| `wildwood_get_integration_guide` | Dynamic SDK setup instructions by project type |
+| `wildwood_get_analytics` | App usage analytics |
+| `wildwood_list_config_snapshots` | Recent config backup snapshots |
+| `wildwood_list_ai_providers` | Company AI providers (masked keys) |
+| `wildwood_list_system_providers` | System-level AI providers and models |
+| `wildwood_list_pricing_models` | Company pricing models |
+| `wildwood_get_theme` | App theme configuration |
+| `wildwood_get_captcha_config` | CAPTCHA configuration (no secrets) |
+| `wildwood_get_subscription_config` | Subscription settings |
+
+### Write Tools (26)
+
+| Tool | Description |
+|------|-------------|
+| `wildwood_create_app` | Create a new app in the company |
+| `wildwood_update_app_config` | Update app name, URLs, limits, settings |
+| `wildwood_manage_ai_config` | Create/update AI configurations (chat, proxy, TTS) |
+| `wildwood_manage_ai_provider` | Create/update company AI provider (API key encrypted) |
+| `wildwood_delete_ai_provider` | Delete AI provider (checks for usage) |
+| `wildwood_manage_auth_config` | Update password policy, registration, rate limits |
+| `wildwood_manage_auth_providers` | Enable/configure auth providers (OAuth credentials encrypted) |
+| `wildwood_manage_messaging_config` | Update messaging features, limits, notifications |
+| `wildwood_manage_disclaimer_config` | Create/update disclaimer display settings |
+| `wildwood_manage_payment_config` | Update payment config (public fields) |
+| `wildwood_set_payment_secrets` | Set payment secret keys (encrypted, separate for safety) |
+| `wildwood_manage_theme` | Create/update app theme (colors, fonts, CSS) |
+| `wildwood_manage_captcha_config` | Create/update CAPTCHA config (secret encrypted) |
+| `wildwood_manage_subscription_config` | Create/update subscription settings |
+| `wildwood_manage_tier` | Create/update subscription tiers |
+| `wildwood_delete_tier` | Delete tier (checks for active subscriptions) |
+| `wildwood_manage_tier_feature` | Add/update/remove tier features |
+| `wildwood_manage_tier_limit` | Add/update/remove tier usage limits |
+| `wildwood_manage_tier_pricing` | Add/remove tier pricing associations |
+| `wildwood_manage_pricing_model` | Create/update pricing models |
+| `wildwood_manage_addon` | Create/update tier add-ons |
+| `wildwood_delete_addon` | Delete add-on |
+| `wildwood_manage_addon_feature` | Add/update/remove add-on features |
+| `wildwood_manage_addon_limit` | Add/update/remove add-on limits |
+| `wildwood_manage_addon_pricing` | Add/remove add-on pricing |
+| `wildwood_restore_config_snapshot` | Restore configuration from backup |
+
+### Configuration Snapshots & Rollback
+
+Every write tool saves a snapshot of the entity's state **before** applying changes. This gives you an automatic undo for any MCP configuration change.
+
+**When to use snapshots:**
+- After a write tool produces unexpected results — offer to restore the previous state
+- When the user wants to experiment with settings and may want to revert
+- Before making a series of related changes — note the starting snapshot so the user can roll back the entire batch
+- When troubleshooting a broken configuration — list recent snapshots to find the last known-good state
+
+**How to use:**
+```
+Step 1: List recent snapshots (optionally filter by entity type)
+→ wildwood_list_config_snapshots()
+→ wildwood_list_config_snapshots(entityType: "AppAIConfiguration", take: 5)
+  Returns: snapshots[] with { id, entityType, entityId, toolName, description, createdAt, wasRestored }
+
+Step 2: Restore a specific snapshot
+→ wildwood_restore_config_snapshot(snapshotId: "<snapshot-id>", confirm: true)
+  This overwrites the current config with the snapshot's saved state.
+  A new snapshot of the current state is saved first (so the restore itself is reversible).
+```
+
+**Supported entity types for restore:** AppAIConfiguration, CompanyApp, AppAuthProviderConfiguration, AppAuthenticationConfiguration, AppMessagingConfiguration, AppPaymentConfiguration, AppDisclaimerConfiguration, CompanyAIProvider, AppComponentTheme, AppCaptchaConfiguration, AppSubscriptionConfiguration
+
+**Best practice:** After any write tool call, if the user expresses concern or the result looks wrong, immediately suggest: *"I can restore the previous configuration — would you like me to roll back?"*
+
+### MCP Configuration Workflows
+
+**AI Chat Setup:**
+```
+wildwood_manage_ai_provider(name, systemAIProviderId, apiKey, confirm)
+  → wildwood_manage_ai_config(name, configurationType, companyAIProviderId, ..., confirm)
+```
+
+**Payment Setup:**
+```
+wildwood_manage_payment_config(isPaymentEnabled, defaultCurrency, ..., confirm)
+  → wildwood_set_payment_secrets(stripeSecretKey, stripeWebhookSecret, confirm)
+```
+
+**Tier & Subscription Setup:**
+```
+wildwood_manage_pricing_model(name, billingFrequency, price, confirm)
+  → wildwood_manage_tier(name, isDefault, confirm)
+    → wildwood_manage_tier_feature(tierId, featureCode, isEnabled, confirm)
+    → wildwood_manage_tier_limit(tierId, limitCode, maxValue, confirm)
+    → wildwood_manage_tier_pricing(tierId, pricingModelId, confirm)
+```
+
+**Theme Setup:**
+```
+wildwood_manage_theme(primaryColor, secondaryColor, fontFamily, ..., confirm)
+```
 
 ## Theme Customization & Style Alignment
 
@@ -248,9 +343,10 @@ When a bug is found in WildwoodComponents, **fix it upstream and open a PR** ins
 ## Key Patterns
 
 1. **Components first**: Always suggest WildwoodComponents before custom implementations
-2. **Admin for config**: All configuration happens in WildwoodAdmin, not in code
+2. **Admin or MCP for config**: Configuration via WildwoodAdmin UI or MCP tools — no code changes needed
 3. **SDK handles auth**: JWT management is automatic — no manual token handling needed
 4. **AppId scoping**: Every API call is scoped to an AppId for multi-tenant isolation
 5. **No secrets in code**: API keys, OAuth secrets, and payment credentials stay in WildwoodAdmin
 6. **Style alignment**: WildwoodComponents should always visually match the user's app — override `--ww-*` CSS variables to match the app's design system
 7. **Fix upstream**: When you find a component bug, PR the fix to the component repo — don't just patch the user's app
+8. **Snapshot safety net**: Every write tool auto-snapshots before changes. If something goes wrong, offer `wildwood_restore_config_snapshot` to roll back. Use `wildwood_list_config_snapshots` to find the right snapshot.

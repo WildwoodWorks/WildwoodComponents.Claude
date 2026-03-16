@@ -126,7 +126,66 @@ builder.Services.AddWildwoodComponents(options =>
 });
 ```
 
-## Step 5: Detect & Align Styling
+## Step 5: Configure Backend via MCP
+
+After installing the SDK, configure the backend services the user needs. Use MCP tools to set up each feature — no WildwoodAdmin UI needed.
+
+### AI Chat
+```
+wildwood_list_ai_providers()                    # Check for existing providers
+wildwood_manage_ai_provider(                    # Create provider with API key
+  name: "OpenAI", systemAIProviderId: "...",
+  apiKey: "sk-...", isEnabled: true, confirm: true)
+wildwood_manage_ai_config(                      # Create AI config linked to provider
+  name: "Chat", configurationType: "chat",
+  companyAIProviderId: "...", isActive: true,
+  isChatEnabled: true, confirm: true)
+```
+
+### Authentication
+```
+wildwood_manage_auth_config(                    # Set auth policy
+  isEnabled: true, allowLocalAuth: true,
+  allowOpenRegistration: true, confirm: true)
+wildwood_manage_auth_providers(                 # Enable social login
+  providerType: "Google", isEnabled: true,
+  clientId: "...", clientSecret: "...", confirm: true)
+```
+
+### Payments
+```
+wildwood_manage_payment_config(                 # Enable payments
+  isPaymentEnabled: true, defaultCurrency: "usd", confirm: true)
+wildwood_set_payment_secrets(                   # Set Stripe keys
+  stripeSecretKey: "sk_...", stripeWebhookSecret: "whsec_...", confirm: true)
+```
+
+### Theme
+```
+wildwood_manage_theme(                          # Match app's design system
+  primaryColor: "#2563eb", secondaryColor: "#64748b",
+  fontFamily: "Inter, sans-serif", confirm: true)
+```
+
+### CAPTCHA
+```
+wildwood_manage_captcha_config(
+  isEnabled: true, providerType: "GoogleReCaptcha",
+  siteKey: "...", secretKey: "...", confirm: true)
+```
+
+### Tiers & Subscriptions
+```
+wildwood_manage_pricing_model(name: "Monthly", billingFrequency: "Monthly", price: 9.99, confirm: true)
+wildwood_manage_tier(name: "Pro", isDefault: false, confirm: true)
+wildwood_manage_tier_feature(tierId: "...", featureCode: "AI_CHAT", isEnabled: true, confirm: true)
+wildwood_manage_tier_pricing(tierId: "...", pricingModelId: "...", confirm: true)
+wildwood_manage_subscription_config(isSubscriptionEnabled: true, confirm: true)
+```
+
+Only configure features the user wants — skip sections that aren't needed.
+
+## Step 6: Detect & Align Styling
 
 Before adding components, analyze the user's existing design system so WildwoodComponents match their app's look and feel.
 
@@ -235,7 +294,7 @@ After generating the theme override:
 3. If using Tailwind, map Tailwind color names to Wildwood variables automatically (e.g., `colors.blue.600` → `--ww-color-primary`)
 4. Confirm the override file is imported in the correct order (after Wildwood base styles)
 
-## Step 6: Add Components
+## Step 7: Add Components
 
 Ask which features the user wants. For each selected component, show the exact imports and usage.
 
@@ -294,7 +353,7 @@ const { theme, setTheme } = useTheme();
 <PaymentComponent />
 ```
 
-## Step 7: Verify Integration
+## Step 8: Verify Integration
 
 Help the user verify everything works:
 
@@ -305,7 +364,7 @@ Help the user verify everything works:
 5. Check the browser console for errors
 6. Verify API calls reach Wildwood
 
-## Step 8: Keep Styles In Sync
+## Step 9: Keep Styles In Sync
 
 Tell the user: "If you change your app's design system later (new brand colors, fonts, etc.), update the Wildwood theme override file to match. Run `/wildwood-integrate` again and I'll re-scan your design tokens and update the overrides."
 
@@ -347,9 +406,10 @@ If you discover a bug in a WildwoodComponent during integration or testing, **fi
 ## Key Reminders
 
 - **WildwoodComponents are pre-built and production-ready** — don't rebuild what's already there
-- **WildwoodAdmin** at https://www.wildwoodworks.com.co provides all administration, analytics, and configuration — no code needed for the admin side
+- **WildwoodAdmin** or **MCP tools** provide all administration and configuration — no code needed for the admin side
 - `@wildwood/core` is always required — framework packages depend on it
 - JWT tokens are managed automatically (refresh at 80% lifetime)
 - Theme CSS must be imported in React: `@wildwood/react/styles`
 - All SDKs: https://github.com/WildwoodWorks
 - Full docs: https://www.wildwoodworks.com.co/docs
+- **Snapshots are automatic**: Every MCP write tool snapshots the config before changing it. If a configuration change causes problems, use `wildwood_list_config_snapshots()` to find the previous state and `wildwood_restore_config_snapshot(snapshotId, confirm: true)` to roll back. Always offer to restore when something goes wrong.
