@@ -66,14 +66,20 @@ Use `wildwood_list_component_configs` to show what's configured for their app:
 - Disclaimers: Terms/privacy configured?
 - Subscriptions: Tier system active?
 
-For any unconfigured features they want, direct them to WildwoodAdmin to set them up — all configuration is done through the admin portal, no code needed.
+For any unconfigured features, you can set them up directly via MCP tools — or direct the user to WildwoodAdmin for a visual interface. Key setup tools:
+- `wildwood_manage_ai_provider` — set up AI provider with API key
+- `wildwood_manage_ai_config` — create AI chat configuration
+- `wildwood_manage_auth_config` — configure authentication
+- `wildwood_manage_payment_config` + `wildwood_set_payment_secrets` — set up payments
+- `wildwood_manage_tier` + `wildwood_manage_pricing_model` — create subscription tiers
+- `wildwood_manage_theme` — customize app theme
 
 ## Step 6: Next Steps
 
 Based on their setup, suggest next steps:
 
 1. **Ready to build?** → Run `/wildwood-integrate` to add WildwoodComponents to their project
-2. **Need to configure features?** → Direct them to WildwoodAdmin at https://www.wildwoodworks.com.co
+2. **Need to configure features?** → Use MCP tools or WildwoodAdmin at https://www.wildwoodworks.com.co
 3. **Want to deploy?** → Run `/wildwood-deploy-app` after building their app
 
 Remind them:

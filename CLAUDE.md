@@ -21,7 +21,7 @@ This plugin connects Claude Code to the **Wildwood platform**, giving you tools 
 
 ## MCP Server Connection
 
-This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.com.co/mcp`. On first connection, a browser window opens for OAuth 2.1 login at WildwoodAdmin. After authentication, Claude can use 22 MCP tools to query and manage your Wildwood apps directly.
+This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.com.co/mcp`. On first connection, a browser window opens for OAuth 2.1 login at WildwoodAdmin. After authentication, Claude can use 46 MCP tools (20 read, 26 write) to query and configure your Wildwood apps directly.
 
 ### Prerequisites
 
@@ -54,9 +54,9 @@ Before MCP tools work, the app must have:
 | Disclaimers | Terms acceptance with version-aware consent tracking | React, RN, Blazor |
 | Notifications | Toast notifications and in-app alerts | React, RN, Blazor |
 
-## MCP Tools (22 total)
+## MCP Tools (46 total)
 
-### Read Tools (14)
+### Read Tools (20)
 | Tool | Description |
 |------|-------------|
 | `wildwood_get_app_info` | Current app config (name, URLs, IsMCPEnabled) |
@@ -68,23 +68,47 @@ Before MCP tools work, the app must have:
 | `wildwood_get_messaging_config` | Messaging settings |
 | `wildwood_get_payment_config` | Payment config (no secrets) |
 | `wildwood_get_disclaimer_config` | Disclaimer configuration |
-| `wildwood_list_app_tiers` | Tiers with pricing and features |
+| `wildwood_list_app_tiers` | Tiers with pricing, features, limits |
 | `wildwood_list_component_configs` | All component configurations |
 | `wildwood_get_integration_guide` | SDK setup instructions |
 | `wildwood_get_analytics` | Usage analytics |
 | `wildwood_list_config_snapshots` | Config backup snapshots |
+| `wildwood_list_ai_providers` | Company AI providers (masked keys) |
+| `wildwood_list_system_providers` | Available system AI providers (OpenAI, Anthropic, etc.) |
+| `wildwood_get_theme` | App theme configuration |
+| `wildwood_get_captcha_config` | CAPTCHA configuration (no secret key) |
+| `wildwood_get_subscription_config` | Subscription/billing settings |
+| `wildwood_list_pricing_models` | Company pricing models |
 
-### Write Tools (8) — require `confirm: true`
+### Write Tools (26) — require `confirm: true`
 | Tool | Description |
 |------|-------------|
 | `wildwood_create_app` | Create a new app |
-| `wildwood_update_app_config` | Update app settings, URLs, IsMCPEnabled |
-| `wildwood_manage_ai_config` | Create/update AI configurations |
-| `wildwood_manage_auth_config` | Update password policy and registration |
-| `wildwood_manage_auth_providers` | Enable/disable/configure auth providers |
-| `wildwood_manage_messaging_config` | Update messaging features and limits |
-| `wildwood_manage_disclaimer_config` | Update disclaimer display settings |
+| `wildwood_update_app_config` | Update app settings, URLs, limits, store URLs |
+| `wildwood_manage_ai_config` | Create/update AI config (full TTS, provider linking) |
+| `wildwood_manage_auth_config` | Update auth settings, rate limits, password expiry |
+| `wildwood_manage_auth_providers` | Configure auth providers with OAuth credentials |
+| `wildwood_manage_messaging_config` | Update messaging with notifications, file types |
+| `wildwood_manage_disclaimer_config` | Create/update disclaimer display settings |
 | `wildwood_restore_config_snapshot` | Restore config from backup |
+| `wildwood_manage_ai_provider` | Create/update company AI providers (encrypted keys) |
+| `wildwood_delete_ai_provider` | Delete company AI provider (checks usage) |
+| `wildwood_manage_payment_config` | Update payment providers, features, invoices |
+| `wildwood_set_payment_secrets` | Set encrypted payment secret keys |
+| `wildwood_manage_theme` | Create/update app theme (colors, fonts, CSS) |
+| `wildwood_manage_captcha_config` | Configure CAPTCHA provider and settings |
+| `wildwood_manage_subscription_config` | Update subscription/billing settings |
+| `wildwood_manage_tier` | Create/update app tiers |
+| `wildwood_delete_tier` | Delete tier (checks subscriptions) |
+| `wildwood_manage_tier_feature` | Add/update/remove tier features |
+| `wildwood_manage_tier_limit` | Add/update/remove tier usage limits |
+| `wildwood_manage_tier_pricing` | Add/remove tier pricing options |
+| `wildwood_manage_pricing_model` | Create/update pricing models |
+| `wildwood_manage_addon` | Create/update add-ons |
+| `wildwood_delete_addon` | Delete add-on |
+| `wildwood_manage_addon_feature` | Add/remove add-on features |
+| `wildwood_manage_addon_limit` | Add/update/remove add-on limits |
+| `wildwood_manage_addon_pricing` | Add/remove add-on pricing |
 
 ## Configuring Components via MCP
 
@@ -94,20 +118,31 @@ Each component needs backend configuration before it works in the SDK. Use MCP t
 
 | Configuration | Via MCP | Requires WildwoodAdmin |
 |--------------|---------|----------------------|
-| Auth settings & providers | Yes | OAuth credentials (Client ID/Secret) |
-| AI configurations | Yes | AI API keys (CompanyAIProvider) |
-| Messaging settings | Yes | — |
-| Disclaimers display | Yes | Disclaimer text/versions |
-| App settings & MCP toggle | Yes | — |
-| App tiers & pricing | Read-only | Tier creation, features, limits |
-| Payment config | Read-only | Stripe/payment credentials |
+| Auth settings & providers | Yes (incl. OAuth credentials) | — |
+| AI configurations | Yes (full config + TTS) | — |
+| AI providers & API keys | Yes (encrypted key storage) | — |
+| Messaging settings | Yes (incl. notifications) | — |
+| Disclaimers display | Yes (create/update) | Disclaimer text/versions |
+| App settings & MCP toggle | Yes (incl. store URLs, limits) | — |
+| App tiers & pricing | Yes (full CRUD) | — |
+| Tier features & limits | Yes (add/update/remove) | — |
+| Pricing models | Yes (create/update) | — |
+| Add-ons | Yes (full CRUD + features/limits/pricing) | — |
+| Payment config | Yes (public keys + features) | — |
+| Payment secrets | Yes (encrypted storage) | — |
+| Theme | Yes (colors, fonts, CSS) | — |
+| CAPTCHA | Yes (incl. encrypted secret) | — |
+| Subscriptions config | Yes (billing, trials, limits) | — |
 
 ### Quick Setup: AI Chat
 
 ```
-wildwood_list_available_providers()          → Find AI provider with hasApiKey=true
+wildwood_list_system_providers()             → Find system provider ID (e.g., OpenAI)
+wildwood_manage_ai_provider(name: "OpenAI", systemAIProviderId: "<id>",
+  apiKey: "sk-...", isEnabled: true, confirm: true)  → Creates provider, encrypts key
 wildwood_manage_ai_config(name: "Chat", configurationType: "chat", model: "gpt-4o",
-  providerTypeCode: "openai", isActive: true, isChatEnabled: true,
+  providerTypeCode: "openai", companyAIProviderId: "<provider-id>",
+  isActive: true, isChatEnabled: true,
   maxTokensPerRequest: 4096, temperature: 0.7, confirm: true)
 ```
 
@@ -135,4 +170,4 @@ wildwood_manage_messaging_config(isMessagingEnabled: true, allowFileAttachments:
 - Theme CSS must be imported in React: `@wildwood/react/styles`
 - API base URL: `https://api.wildwoodworks.com.co/api`
 - Admin portal: `https://www.wildwoodworks.com.co`
-- All write tools auto-snapshot before changes — use `wildwood_restore_config_snapshot` to roll back
+- All write tools auto-snapshot before changes — if something goes wrong, use `wildwood_list_config_snapshots()` to find the previous state, then `wildwood_restore_config_snapshot(snapshotId, confirm: true)` to roll back. Always offer to restore when a config change produces unexpected results.

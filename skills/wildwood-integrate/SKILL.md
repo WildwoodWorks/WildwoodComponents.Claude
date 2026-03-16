@@ -177,23 +177,46 @@ builder.Services.AddWildwoodComponents(options =>
    )
 ```
 
-**If no company auth providers exist:** Tell the user to configure OAuth credentials in WildwoodAdmin → Settings → Authentication Providers first.
+**OAuth credentials can be set directly via MCP:**
+```
+   wildwood_manage_auth_providers(
+     providerType: "Google",
+     isEnabled: true,
+     clientId: "your-client-id.apps.googleusercontent.com",
+     clientSecret: "GOCSPX-...",
+     redirectUri: "https://myapp.com/auth/callback",
+     scope: "openid email profile",
+     confirm: true
+   )
+```
+Secrets are encrypted and never returned in responses.
 
 ### AI Chat Component
 
 **What it needs:** A CompanyAIProvider (with API key) + an AppAIConfiguration linking to it.
 
 ```
-1. wildwood_list_available_providers()
-   → Look at ai.providers[] for company-level AI providers
-   → Each has { id, name, isEnabled, hasApiKey }
-   → If no AI providers with hasApiKey=true, tell user to add one in WildwoodAdmin → Settings → AI Providers
+1. wildwood_list_system_providers()
+   → Find the system provider ID for OpenAI, Anthropic, etc.
 
-2. wildwood_manage_ai_config(
+2. wildwood_list_ai_providers()
+   → Check if a company provider already exists with hasApiKey=true
+   → If not, create one:
+
+   wildwood_manage_ai_provider(
+     name: "OpenAI",
+     systemAIProviderId: "<system-provider-id>",
+     apiKey: "sk-...",
+     isEnabled: true,
+     confirm: true
+   )
+
+3. wildwood_manage_ai_config(
      name: "AI Assistant",
      configurationType: "chat",
      model: "gpt-4o",
      providerTypeCode: "openai",
+     companyAIProviderId: "<provider-id-from-step-2>",
      isActive: true,
      isChatEnabled: true,
      maxTokensPerRequest: 4096,
@@ -270,37 +293,70 @@ The Node.js `createProxyMiddleware()` routes client requests through the server,
 
 ### App Tiers / Subscriptions Component
 
-**What it needs:** Tiers configured in WildwoodAdmin (read-only via MCP).
+**What it needs:** Pricing models, tiers with features/limits/pricing, and subscription config.
 
 ```
-1. wildwood_list_app_tiers()
-   → Shows existing tiers with pricing and features
+1. wildwood_manage_pricing_model(name: "Monthly Pro", billingFrequency: "Monthly", price: 29.99, confirm: true)
+
+2. wildwood_manage_tier(name: "Pro", description: "For growing teams", displayOrder: 1, confirm: true)
+
+3. wildwood_manage_tier_feature(tierId: "<id>", featureCode: "AI_CHAT", displayName: "AI Chat", isEnabled: true, confirm: true)
+
+4. wildwood_manage_tier_limit(tierId: "<id>", limitCode: "API_REQUESTS", maxValue: 10000, limitType: "Monthly", confirm: true)
+
+5. wildwood_manage_tier_pricing(tierId: "<id>", pricingModelId: "<id>", isDefault: true, confirm: true)
+
+6. wildwood_manage_subscription_config(isSubscriptionEnabled: true, allowTrialPeriods: true, defaultTrialDays: 14, confirm: true)
 ```
 
-**Note:** Creating tiers, features, limits, and pricing must be done in WildwoodAdmin → App Settings → Tiers. The tier data model is:
-- **AppTier**: The subscription plan (Free, Starter, Pro, etc.)
-  - **AppTierFeature**: Feature flags per tier (feature codes like `AI_CHAT`, `MESSAGING`, `MCP_SERVERS`)
-  - **AppTierLimit**: Usage caps per tier (e.g., max API calls per day)
-  - **AppTierPricing**: Billing options linked to PricingModel (monthly, annual)
-  - **AppTierAddOn**: Optional paid extras (e.g., MCP Servers add-on)
+**Add-ons** (optional paid extras):
+```
+wildwood_manage_addon(name: "MCP Servers", category: "Developer", confirm: true)
+wildwood_manage_addon_feature(addOnId: "<id>", featureCode: "MCP_SERVERS", confirm: true)
+wildwood_manage_addon_pricing(addOnId: "<id>", pricingModelId: "<id>", confirm: true)
+```
 
 ### Payment Component
 
-**What it needs:** CompanyPaymentProvider configured in WildwoodAdmin (read-only via MCP).
+**What it needs:** Payment config enabled with provider keys.
 
 ```
-1. wildwood_list_available_providers()
-   → Look at payment.providers[] for { id, providerType, isEnabled, hasSecretKey }
+1. wildwood_manage_payment_config(
+     isPaymentEnabled: true,
+     enableStripe: true,
+     stripePublishableKey: "pk_live_...",
+     defaultCurrency: "USD",
+     allowSavedPaymentMethods: true,
+     enablePaymentReceipts: true,
+     confirm: true
+   )
 
-2. wildwood_get_payment_config()
-   → Check current app payment configuration
+2. wildwood_set_payment_secrets(
+     stripeSecretKey: "sk_live_...",
+     stripeWebhookSecret: "whsec_...",
+     confirm: true
+   )
 ```
 
-**Note:** Stripe API keys and webhook secrets must be configured in WildwoodAdmin → Settings → Payment Providers. Payment config is read-only via MCP for security.
+Secrets are encrypted and never returned. Use `wildwood_get_payment_config()` to verify — it shows `hasStripeSecretKey: true`.
 
 ### Theme Component
 
-No backend configuration needed. Theme works client-side via the SDK.
+Theme works client-side via the SDK, but backend theme config can customize colors and fonts:
+
+```
+wildwood_manage_theme(
+  primaryColor: "#3B82F6",
+  secondaryColor: "#6B7280",
+  accentColor: "#F59E0B",
+  backgroundColor: "#FFFFFF",
+  textColor: "#1F2937",
+  fontFamily: "Inter, sans-serif",
+  isDarkMode: false,
+  borderRadius: "8px",
+  confirm: true
+)
+```
 
 For React, import styles: `import '@wildwood/react/styles';`
 
@@ -383,13 +439,19 @@ Help the user verify everything works:
 | Component | MCP Configurable | Requires WildwoodAdmin |
 |-----------|-----------------|----------------------|
 | **Auth settings** | Yes — `wildwood_manage_auth_config` | — |
-| **Auth providers** | Yes — `wildwood_manage_auth_providers` | OAuth credentials (Client ID/Secret) |
-| **AI config** | Yes — `wildwood_manage_ai_config` | AI API keys (CompanyAIProvider) |
+| **Auth providers** | Yes — incl. OAuth credentials (encrypted) | — |
+| **AI providers & keys** | Yes — `wildwood_manage_ai_provider` (encrypted) | — |
+| **AI config** | Yes — `wildwood_manage_ai_config` (full TTS) | — |
 | **Messaging** | Yes — `wildwood_manage_messaging_config` | — |
 | **Disclaimers** | Yes — `wildwood_manage_disclaimer_config` | Disclaimer content/versions |
 | **App settings** | Yes — `wildwood_update_app_config` | — |
-| **App tiers** | Read-only — `wildwood_list_app_tiers` | Tier creation, features, pricing |
-| **Payments** | Read-only — `wildwood_get_payment_config` | Stripe/payment credentials |
+| **App tiers** | Yes — full CRUD (tiers, features, limits, pricing) | — |
+| **Add-ons** | Yes — full CRUD | — |
+| **Pricing models** | Yes — `wildwood_manage_pricing_model` | — |
+| **Payments** | Yes — config + encrypted secrets | — |
+| **Theme** | Yes — `wildwood_manage_theme` | — |
+| **CAPTCHA** | Yes — `wildwood_manage_captcha_config` (encrypted) | — |
+| **Subscriptions** | Yes — `wildwood_manage_subscription_config` | — |
 | **MCP toggle** | Yes — `wildwood_update_app_config(isMCPEnabled)` | — |
 
 ## Key Reminders
@@ -401,3 +463,4 @@ Help the user verify everything works:
 - Theme CSS must be imported in React: `@wildwood/react/styles`
 - All SDKs: https://github.com/WildwoodWorks
 - Full docs: https://www.wildwoodworks.com.co/docs
+- **Snapshots are automatic**: Every MCP write tool snapshots the config before changing it. If a configuration change causes problems, use `wildwood_list_config_snapshots()` to find the previous state and `wildwood_restore_config_snapshot(snapshotId, confirm: true)` to roll back. Always offer to restore when something goes wrong.
