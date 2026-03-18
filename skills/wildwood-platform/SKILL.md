@@ -24,7 +24,7 @@ This skill provides background knowledge about the Wildwood platform. It is auto
                   ▼
 ┌─────────────────────────────────────────────────────┐
 │              WildwoodAPI (.NET 10)                    │
-│  api.wildwoodworks.com.co                            │
+│  api.wildwoodworks.io                            │
 │                                                      │
 │  REST API (/api/*) + SignalR (/hubs/*) + MCP (/mcp) │
 │  Multi-tenant: Company → App → User                  │
@@ -34,7 +34,7 @@ This skill provides background knowledge about the Wildwood platform. It is auto
                   ▼
 ┌─────────────────────────────────────────────────────┐
 │            WildwoodAdmin (Razor Pages)               │
-│  www.wildwoodworks.com.co                            │
+│  admin.wildwoodworks.io                            │
 │                                                      │
 │  Company management, app config, analytics,          │
 │  user management, AI setup, payments, hosting        │
@@ -130,14 +130,14 @@ Same hook API as React, with native UI components and StyleSheet themes.
 **Setup:**
 ```csharp
 builder.Services.AddWildwoodComponents(options => {
-    options.ApiUrl = "https://api.wildwoodworks.com.co/api";
+    options.ApiUrl = "https://api.wildwoodworks.io/api";
     options.AppId = "your-app-id";
 });
 ```
 
 ## API Conventions
 
-- Base URL: `https://api.wildwoodworks.com.co/api`
+- Base URL: `https://api.wildwoodworks.io/api`
 - Auth: JWT Bearer token in `Authorization` header
 - All paths prefixed with `/api/`
 - Login response: `{ jwtToken, email, firstName, ... }` (no `token` alias, no `user` sub-object)

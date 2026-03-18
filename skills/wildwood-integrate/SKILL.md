@@ -66,7 +66,7 @@ import { WildwoodProvider } from '@wildwood/react';
 import '@wildwood/react/styles'; // Theme CSS
 
 const client = createWildwoodClient({
-  apiUrl: 'https://api.wildwoodworks.com.co/api',
+  apiUrl: 'https://api.wildwoodworks.io/api',
   appId: 'YOUR_APP_ID',
 });
 
@@ -86,7 +86,7 @@ import { createWildwoodClient } from '@wildwood/core';
 import { WildwoodProvider } from '@wildwood/react-native';
 
 const client = createWildwoodClient({
-  apiUrl: 'https://api.wildwoodworks.com.co/api',
+  apiUrl: 'https://api.wildwoodworks.io/api',
   appId: 'YOUR_APP_ID',
   platform: 'ios', // or 'android'
 });
@@ -107,7 +107,7 @@ const { createWildwoodClient } = require('@wildwood/core');
 const { createAuthMiddleware, createProxyMiddleware } = require('@wildwood/node');
 
 const client = createWildwoodClient({
-  apiUrl: 'https://api.wildwoodworks.com.co/api',
+  apiUrl: 'https://api.wildwoodworks.io/api',
   appId: 'YOUR_APP_ID',
 });
 
@@ -121,7 +121,7 @@ app.use('/api/wildwood', createProxyMiddleware(client));
 // Program.cs
 builder.Services.AddWildwoodComponents(options =>
 {
-    options.ApiUrl = "https://api.wildwoodworks.com.co/api";
+    options.ApiUrl = "https://api.wildwoodworks.io/api";
     options.AppId = "YOUR_APP_ID";
 });
 ```
@@ -411,5 +411,5 @@ If you discover a bug in a WildwoodComponent during integration or testing, **fi
 - JWT tokens are managed automatically (refresh at 80% lifetime)
 - Theme CSS must be imported in React: `@wildwood/react/styles`
 - All SDKs: https://github.com/WildwoodWorks
-- Full docs: https://www.wildwoodworks.com.co/docs
+- Full docs: https://admin.wildwoodworks.io/docs
 - **Snapshots are automatic**: Every MCP write tool snapshots the config before changing it. If a configuration change causes problems, use `wildwood_list_config_snapshots()` to find the previous state and `wildwood_restore_config_snapshot(snapshotId, confirm: true)` to roll back. Always offer to restore when something goes wrong.

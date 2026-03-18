@@ -71,7 +71,7 @@ Skip this step if WildwoodComponents are not detected in the project.
 Before building, identify required environment variables:
 
 1. **Wildwood SDK config** — if WildwoodComponents are installed, the app needs:
-   - `VITE_WILDWOOD_API_URL` or `NEXT_PUBLIC_WILDWOOD_API_URL` (React/Next.js): `https://api.wildwoodworks.com.co/api`
+   - `VITE_WILDWOOD_API_URL` or `NEXT_PUBLIC_WILDWOOD_API_URL` (React/Next.js): `https://api.wildwoodworks.io/api`
    - `VITE_WILDWOOD_APP_ID` or `NEXT_PUBLIC_WILDWOOD_APP_ID`: the user's AppId
    - For .NET: these go in `appsettings.Production.json` instead
 2. **Other env vars** — scan for `.env`, `.env.example`, `.env.local` and list any variables that need production values
@@ -230,7 +230,7 @@ After deployment:
 
 1. **Visit the live URL** and verify the app loads correctly
 2. **Test WildwoodComponents** — if integrated, confirm:
-   - Authentication works (login flow reaches `api.wildwoodworks.com.co`)
+   - Authentication works (login flow reaches `api.wildwoodworks.io`)
    - Components render with correct styling
    - API calls aren't blocked by CORS (the Wildwood API allows cross-origin requests)
 3. **Check for common issues**:
@@ -251,7 +251,7 @@ Once deployment succeeds, report:
 Remind them:
 - Redeploy by running `/wildwood-deploy-app` again or pushing to the connected branch
 - Configure a custom domain in the hosting platform's settings
-- WildwoodAdmin at https://www.wildwoodworks.com.co manages all backend configuration (AI, auth, payments, etc.) — no hosting changes needed for that
+- WildwoodAdmin at https://admin.wildwoodworks.io manages all backend configuration (AI, auth, payments, etc.) — no hosting changes needed for that
 
 ## SDK Repositories
 
@@ -273,7 +273,7 @@ If a bug in WildwoodComponents is discovered during build or deployment (e.g., a
 
 ## Documentation
 
-- Wildwood platform docs: https://www.wildwoodworks.com.co/docs
+- Wildwood platform docs: https://admin.wildwoodworks.io/docs
 - Vercel docs: https://vercel.com/docs
 - Netlify docs: https://docs.netlify.com
 - Cloudflare Pages docs: https://developers.cloudflare.com/pages

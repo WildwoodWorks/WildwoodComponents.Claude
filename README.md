@@ -27,7 +27,7 @@ git clone https://github.com/WildwoodWorks/WildwoodComponents.Claude.git
 
 ### MCP Server Connection
 
-Connects Claude to the Wildwood API at `api.wildwoodworks.com.co/mcp` via OAuth 2.1. On first use, a browser window opens for authentication at [WildwoodAdmin](https://www.wildwoodworks.com.co).
+Connects Claude to the Wildwood API at `api.wildwoodworks.io/mcp` via OAuth 2.1. On first use, a browser window opens for authentication at [WildwoodAdmin](https://admin.wildwoodworks.io).
 
 Once connected, Claude can query and manage your Wildwood apps directly using 14+ MCP tools.
 
@@ -66,9 +66,9 @@ The core value of the Wildwood platform is **pre-built, production-ready UI comp
 
 ## Links
 
-- **Admin Portal**: https://www.wildwoodworks.com.co
-- **API**: https://api.wildwoodworks.com.co/api
-- **Documentation**: https://www.wildwoodworks.com.co/docs
+- **Admin Portal**: https://admin.wildwoodworks.io
+- **API**: https://api.wildwoodworks.io/api
+- **Documentation**: https://admin.wildwoodworks.io/docs
 - **GitHub**: https://github.com/WildwoodWorks
 
 ## License

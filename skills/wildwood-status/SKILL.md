@@ -33,7 +33,18 @@ Use MCP tools (preferred) or REST API to gather:
   - Notifications (configured/not)
   - Subscriptions (enabled/disabled)
 
-## Step 3: Analytics
+## Step 3: Hosting & Database Status
+
+### App Hosting
+- `hosting_deployment_list` → List all hosted app deployments with status
+- Show: Name, slug, status (Running/Stopped), framework, URL
+
+### Database Hosting
+- `database_hosting_list` → List all hosted databases with status
+- Show: Name, slug, tier, status (Active/Suspended/Provisioning), storage usage
+- If databases exist, show storage summary (total used / total allocated)
+
+## Step 4: Analytics
 
 Use `wildwood_get_analytics` to show recent usage:
 - Total users
@@ -41,14 +52,14 @@ Use `wildwood_get_analytics` to show recent usage:
 - Messages (last 30 days)
 - Top actions by frequency
 
-## Step 4: Tier & Quota Usage
+## Step 5: Tier & Quota Usage
 
 Use `wildwood_list_app_tiers` to show:
 - Available tiers and pricing
 - Feature limits per tier
 - Current tier (if subscription data available)
 
-## Step 5: Report Summary
+## Step 6: Report Summary
 
 Present a clean status report:
 
@@ -66,12 +77,16 @@ Components:
   Payments:       Enabled/Disabled
   Subscriptions:  Enabled/Disabled
 
+Hosting:
+  Deployments: {count} ({running} running)
+  Databases:   {count} ({active} active, {totalMB}MB used)
+
 Usage (Last 30 Days):
   Users:       {total}
   AI Requests: {count}
   Messages:    {count}
 
-Admin Portal: https://www.wildwoodworks.com.co
+Admin Portal: https://admin.wildwoodworks.io
 ```
 
 ## Troubleshooting
