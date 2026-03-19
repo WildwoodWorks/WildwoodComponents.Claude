@@ -4,14 +4,36 @@ A Claude Code plugin that connects Claude to the **Wildwood platform** — givin
 
 ## Installation
 
-```
-/plugin install github:WildwoodWorks/WildwoodComponents.Claude
+### One-liner (recommended)
+
+**macOS / Linux:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/WildwoodWorks/WildwoodComponents.Claude/main/install.sh | bash
 ```
 
-Or clone and reference locally:
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/WildwoodWorks/WildwoodComponents.Claude/main/install.ps1 | iex
+```
+
+This installs skills, MCP server config, and platform context into your current project directory.
+
+### From a cloned repo
 
 ```bash
 git clone https://github.com/WildwoodWorks/WildwoodComponents.Claude.git
+cd WildwoodComponents.Claude
+
+# Install into current project
+./install.sh /path/to/your/project       # macOS/Linux
+.\install.ps1 -ProjectDir C:\your\project # Windows
+```
+
+### MCP server only
+
+If you just want the MCP tools without the skills:
+```bash
+claude mcp add wildwood --transport http --url https://api.wildwoodworks.io/mcp
 ```
 
 ## What You Get
@@ -59,10 +81,11 @@ The core value of the Wildwood platform is **pre-built, production-ready UI comp
 
 ## Quick Start
 
-1. Install the plugin: `/plugin install github:WildwoodWorks/WildwoodComponents.Claude`
-2. Run `/wildwood-setup` to create your account and first app
-3. Run `/wildwood-integrate` to add components to your project
-4. Run `/wildwood-deploy-app` to deploy
+1. Run the install script (see Installation above)
+2. Start Claude Code in your project directory
+3. Run `/wildwood-setup` to create your account and first app
+4. Run `/wildwood-integrate` to add components to your project
+5. Run `/wildwood-deploy-app` to deploy
 
 ## Links
 
