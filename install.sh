@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # WildwoodComponents.Claude installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/WildwoodWorks/WildwoodComponents.Claude/main/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/WildwoodWorks/WildwoodComponents.Claude/master/install.sh | bash
 #   or:  ./install.sh              (from cloned repo)
 #   or:  ./install.sh /path/to/project
 

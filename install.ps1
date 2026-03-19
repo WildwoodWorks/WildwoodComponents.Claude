@@ -1,5 +1,5 @@
 # WildwoodComponents.Claude installer for Windows
-# Usage: irm https://raw.githubusercontent.com/WildwoodWorks/WildwoodComponents.Claude/main/install.ps1 | iex
+# Usage: irm https://raw.githubusercontent.com/WildwoodWorks/WildwoodComponents.Claude/master/install.ps1 | iex
 #   or:  .\install.ps1              (from cloned repo)
 #   or:  .\install.ps1 -ProjectDir C:\path\to\project
 

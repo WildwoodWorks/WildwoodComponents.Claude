@@ -8,12 +8,12 @@ A Claude Code plugin that connects Claude to the **Wildwood platform** — givin
 
 **macOS / Linux:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/WildwoodWorks/WildwoodComponents.Claude/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/WildwoodWorks/WildwoodComponents.Claude/master/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/WildwoodWorks/WildwoodComponents.Claude/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/WildwoodWorks/WildwoodComponents.Claude/master/install.ps1 | iex
 ```
 
 This installs skills, MCP server config, and platform context into your current project directory.
