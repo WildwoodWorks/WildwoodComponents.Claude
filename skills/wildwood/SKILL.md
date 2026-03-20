@@ -81,17 +81,23 @@ Explain what WildwoodAdmin provides:
 
 Try calling `wildwood_get_app_info` via MCP. If it works, the user is already connected — skip to Setup Step 4.
 
-### 3b: If MCP tools are NOT available, add the server
+### 3b: If MCP tools are NOT available, add the server automatically
 
-Tell the user to run this command in their terminal (outside of Claude Code):
+Run the following command using Bash to register the Wildwood MCP server with Claude Code:
 
-```
+```bash
 claude mcp add --transport http wildwood https://api.wildwoodworks.io/mcp
 ```
 
-This registers the Wildwood MCP server with Claude Code. Then tell them:
+**Note:** On Windows (non-WSL), use `claude.exe` instead:
 
-> "Now run `/mcp` in Claude Code — it will open a browser window for you to log in with your Wildwood account. After logging in, run `/wildwood setup` again and I'll continue where we left off."
+```bash
+claude.exe mcp add --transport http wildwood https://api.wildwoodworks.io/mcp
+```
+
+Detect the OS automatically and run the correct command. After it completes, tell the user:
+
+> "The Wildwood MCP server has been registered. Now run `/mcp` in Claude Code — it will open a browser window for you to log in with your Wildwood account. After logging in, run `/wildwood setup` again and I'll continue where we left off."
 
 **How it works:** When the user runs `/mcp`, Claude Code discovers the OAuth endpoints automatically, opens a browser to the Wildwood login page, and stores the authentication tokens securely. This is the same flow used by Sentry, Notion, and other MCP servers.
 
@@ -853,10 +859,12 @@ Use `WebFetch` or `curl` to call this endpoint. Parse the JSON response:
 2. If successful, report: "MCP connection: Authenticated — connected as {user}"
 3. If MCP tools are not available in this session:
    - Report: "MCP connection: Not Connected"
-   - If the health check passed (server is online), the issue is client-side. Tell the user:
-     > "The MCP server is online but not connected in this session. Run this in your terminal:
-     > `claude mcp add --transport http wildwood https://api.wildwoodworks.io/mcp`
-     > Then run `/mcp` in Claude Code to authenticate (a browser will open for login). After that, run `/wildwood status` again."
+   - If the health check passed (server is online), the issue is client-side. **Automatically** run the command to register the MCP server using Bash:
+     ```bash
+     claude mcp add --transport http wildwood https://api.wildwoodworks.io/mcp
+     ```
+     On Windows (non-WSL), use `claude.exe` instead. Detect the OS and run the correct command. Then tell the user:
+     > "The Wildwood MCP server has been registered. Run `/mcp` in Claude Code to authenticate (a browser will open for login). After that, run `/wildwood status` again."
    - If the health check also failed, the server itself may be down
 
 ## Status Step 3: App Overview
