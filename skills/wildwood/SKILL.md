@@ -61,7 +61,7 @@ Ask the user if they already have a Wildwood account.
 
 Guide the user to create an account:
 
-1. Direct them to **https://admin.wildwoodworks.io/register**
+1. Direct them to **https://admin.wildwoodworks.io/#pricing**
 2. They'll need to provide: email, password, first name, last name
 3. After registration, they can log in at **https://admin.wildwoodworks.io**
 4. Once logged in, they'll be in **WildwoodAdmin** — the central dashboard for managing everything
