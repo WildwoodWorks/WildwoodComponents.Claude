@@ -49,36 +49,46 @@ for skill_dir in "$PLUGIN_DIR/skills"/*/; do
     echo "  + /${skill_name}"
 done
 
-# 2. Configure MCP server
+# 2. Configure MCP server (global ~/.mcp.json so Claude Code always has it)
 echo -e "${GREEN}[2/3]${NC} Configuring MCP server..."
-MCP_FILE="$PROJECT_DIR/.mcp.json"
-if [[ -f "$MCP_FILE" ]]; then
-    # Merge - add wildwood server if not already present
-    if grep -q '"wildwood"' "$MCP_FILE" 2>/dev/null; then
-        echo "  ~ wildwood MCP server already configured, skipping"
-    else
-        # Use node/python if available, otherwise simple jq
-        if command -v jq &>/dev/null; then
-            jq '.mcpServers.wildwood = {"type": "http", "url": "https://api.wildwoodworks.io/mcp"}' "$MCP_FILE" > "${MCP_FILE}.tmp"
-            mv "${MCP_FILE}.tmp" "$MCP_FILE"
-            echo "  + merged wildwood server into existing .mcp.json"
-        elif command -v node &>/dev/null; then
-            node -e "
-                const fs = require('fs');
-                const cfg = JSON.parse(fs.readFileSync('$MCP_FILE', 'utf8'));
-                cfg.mcpServers = cfg.mcpServers || {};
-                cfg.mcpServers.wildwood = {type: 'http', url: 'https://api.wildwoodworks.io/mcp'};
-                fs.writeFileSync('$MCP_FILE', JSON.stringify(cfg, null, 2) + '\n');
-            "
-            echo "  + merged wildwood server into existing .mcp.json"
+
+add_wildwood_mcp() {
+    local target="$1"
+    local label="$2"
+    if [[ -f "$target" ]]; then
+        if grep -q '"wildwood"' "$target" 2>/dev/null; then
+            echo "  ~ $label already has wildwood server, skipping"
         else
-            echo -e "  ${YELLOW}! Could not merge .mcp.json (install jq or node). Add manually:${NC}"
-            echo '    "wildwood": { "type": "http", "url": "https://api.wildwoodworks.io/mcp" }'
+            if command -v jq &>/dev/null; then
+                jq '.mcpServers.wildwood = {"type": "http", "url": "https://api.wildwoodworks.io/mcp"}' "$target" > "${target}.tmp"
+                mv "${target}.tmp" "$target"
+                echo "  + merged wildwood server into $label"
+            elif command -v node &>/dev/null; then
+                node -e "
+                    const fs = require('fs');
+                    const cfg = JSON.parse(fs.readFileSync('$target', 'utf8'));
+                    cfg.mcpServers = cfg.mcpServers || {};
+                    cfg.mcpServers.wildwood = {type: 'http', url: 'https://api.wildwoodworks.io/mcp'};
+                    fs.writeFileSync('$target', JSON.stringify(cfg, null, 2) + '\n');
+                "
+                echo "  + merged wildwood server into $label"
+            else
+                echo -e "  ${YELLOW}! Could not merge $label (install jq or node). Add manually:${NC}"
+                echo '    "wildwood": { "type": "http", "url": "https://api.wildwoodworks.io/mcp" }'
+            fi
         fi
+    else
+        cp "$PLUGIN_DIR/.mcp.json" "$target"
+        echo "  + created $label with wildwood server"
     fi
-else
-    cp "$PLUGIN_DIR/.mcp.json" "$MCP_FILE"
-    echo "  + created .mcp.json with wildwood server"
+}
+
+# Global config (Claude Code reads this on startup)
+add_wildwood_mcp "$HOME/.mcp.json" "~/.mcp.json"
+
+# Project-level config (so the project is self-contained)
+if [[ "$PROJECT_DIR" != "$HOME" ]]; then
+    add_wildwood_mcp "$PROJECT_DIR/.mcp.json" "project .mcp.json"
 fi
 
 # 3. Install CLAUDE.md context
@@ -107,8 +117,7 @@ echo ""
 echo -e "${GREEN}Done!${NC} Wildwood plugin installed successfully."
 echo ""
 echo -e "Next steps:"
-echo -e "  1. Start Claude Code in your project directory"
-echo -e "  2. Run ${CYAN}/wildwood setup${NC} to create your account"
-echo -e "  3. Run ${CYAN}/wildwood integrate${NC} to add components to your project"
+echo -e "  1. ${CYAN}Restart Claude Code${NC} (or start it in your project directory)"
+echo -e "     It will connect to the MCP server and open a browser for login."
+echo -e "  2. Run ${CYAN}/wildwood${NC} to get started"
 echo ""
-echo -e "The MCP server will prompt for OAuth login on first use."

@@ -48,32 +48,44 @@ Get-ChildItem (Join-Path $PluginDir "skills") -Directory | ForEach-Object {
     Write-Host "  + /$SkillName"
 }
 
-# 2. Configure MCP server
+# 2. Configure MCP server (global + project)
 Write-Host "[2/3] Configuring MCP server..." -ForegroundColor Green
-$McpFile = Join-Path $ProjectDir ".mcp.json"
 
-if (Test-Path $McpFile) {
-    $McpContent = Get-Content $McpFile -Raw
-    if ($McpContent -match '"wildwood"') {
-        Write-Host "  ~ wildwood MCP server already configured, skipping"
-    } else {
-        try {
-            $McpJson = $McpContent | ConvertFrom-Json
-            if (-not $McpJson.mcpServers) {
-                $McpJson | Add-Member -NotePropertyName "mcpServers" -NotePropertyValue ([PSCustomObject]@{})
+function Add-WildwoodMcp {
+    param([string]$Target, [string]$Label)
+    if (Test-Path $Target) {
+        $Content = Get-Content $Target -Raw
+        if ($Content -match '"wildwood"') {
+            Write-Host "  ~ $Label already has wildwood server, skipping"
+        } else {
+            try {
+                $Json = $Content | ConvertFrom-Json
+                if (-not $Json.mcpServers) {
+                    $Json | Add-Member -NotePropertyName "mcpServers" -NotePropertyValue ([PSCustomObject]@{})
+                }
+                $Server = [PSCustomObject]@{ type = "http"; url = "https://api.wildwoodworks.io/mcp" }
+                $Json.mcpServers | Add-Member -NotePropertyName "wildwood" -NotePropertyValue $Server
+                $Json | ConvertTo-Json -Depth 10 | Set-Content $Target -Encoding UTF8
+                Write-Host "  + merged wildwood server into $Label"
+            } catch {
+                Write-Host "  ! Could not merge $Label. Add manually:" -ForegroundColor Yellow
+                Write-Host '    "wildwood": { "type": "http", "url": "https://api.wildwoodworks.io/mcp" }'
             }
-            $WildwoodServer = [PSCustomObject]@{ type = "http"; url = "https://api.wildwoodworks.io/mcp" }
-            $McpJson.mcpServers | Add-Member -NotePropertyName "wildwood" -NotePropertyValue $WildwoodServer
-            $McpJson | ConvertTo-Json -Depth 10 | Set-Content $McpFile -Encoding UTF8
-            Write-Host "  + merged wildwood server into existing .mcp.json"
-        } catch {
-            Write-Host "  ! Could not merge .mcp.json. Add manually:" -ForegroundColor Yellow
-            Write-Host '    "wildwood": { "type": "http", "url": "https://api.wildwoodworks.io/mcp" }'
         }
+    } else {
+        Copy-Item (Join-Path $PluginDir ".mcp.json") $Target
+        Write-Host "  + created $Label with wildwood server"
     }
-} else {
-    Copy-Item (Join-Path $PluginDir ".mcp.json") $McpFile
-    Write-Host "  + created .mcp.json with wildwood server"
+}
+
+# Global config (Claude Code reads this on startup)
+$GlobalMcp = Join-Path $env:USERPROFILE ".mcp.json"
+Add-WildwoodMcp -Target $GlobalMcp -Label "~/.mcp.json"
+
+# Project-level config (so the project is self-contained)
+$ProjectMcp = Join-Path $ProjectDir ".mcp.json"
+if ($ProjectDir -ne $env:USERPROFILE) {
+    Add-WildwoodMcp -Target $ProjectMcp -Label "project .mcp.json"
 }
 
 # 3. Install CLAUDE.md context
@@ -105,8 +117,7 @@ Write-Host ""
 Write-Host "Done! Wildwood plugin installed successfully." -ForegroundColor Green
 Write-Host ""
 Write-Host "Next steps:"
-Write-Host "  1. Start Claude Code in your project directory"
-Write-Host "  2. Run /wildwood setup to create your account" -ForegroundColor Cyan
-Write-Host "  3. Run /wildwood integrate to add components to your project" -ForegroundColor Cyan
+Write-Host "  1. Restart Claude Code (or start it in your project directory)" -ForegroundColor Cyan
+Write-Host "     It will connect to the MCP server and open a browser for login."
+Write-Host "  2. Run /wildwood to get started" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "The MCP server will prompt for OAuth login on first use."

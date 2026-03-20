@@ -87,10 +87,8 @@ The core value of the Wildwood platform is **pre-built, production-ready UI comp
 ## Quick Start
 
 1. Run the install script (see Installation above)
-2. Start Claude Code in your project directory
-3. Run `/wildwood setup` to create your account and first app
-4. Run `/wildwood integrate` to add components to your project
-5. Run `/wildwood deploy` to deploy
+2. Restart Claude Code — it will connect to the MCP server and open a browser for login
+3. Run `/wildwood` to get started
 
 ## Links
 
