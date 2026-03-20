@@ -81,25 +81,96 @@ Explain what WildwoodAdmin provides:
 
 Try calling `wildwood_get_app_info` via MCP. If it works, the user is already connected — skip to Setup Step 4.
 
-### 3b: If MCP tools are NOT available, add the server automatically
+### 3b: If MCP tools are NOT available, register the server
 
-Run the following command using Bash to register the Wildwood MCP server with Claude Code:
-
-```bash
-claude mcp add --transport http wildwood https://api.wildwoodworks.io/mcp
-```
-
-**Note:** On Windows (non-WSL), use `claude.exe` instead:
+Run via Bash to register the Wildwood MCP server:
 
 ```bash
-claude.exe mcp add --transport http wildwood https://api.wildwoodworks.io/mcp
+npx @anthropic-ai/claude-code mcp add --transport http wildwood https://api.wildwoodworks.io/mcp
 ```
 
-Detect the OS automatically and run the correct command. After it completes, tell the user:
+If `claude` is on PATH, use `claude mcp add --transport http wildwood https://api.wildwoodworks.io/mcp` instead. On Windows (non-WSL), use `claude.exe`.
 
-> "The Wildwood MCP server has been registered. Now run `/mcp` in Claude Code — it will open a browser window for you to log in with your Wildwood account. After logging in, run `/wildwood setup` again and I'll continue where we left off."
+After registering, tell the user to restart Claude Code (or close and reopen VS Code if using the extension).
 
-**How it works:** When the user runs `/mcp`, Claude Code discovers the OAuth endpoints automatically, opens a browser to the Wildwood login page, and stores the authentication tokens securely. This is the same flow used by Sentry, Notion, and other MCP servers.
+### 3c: After restart — check if OAuth completed
+
+Try `wildwood_get_app_info` again. If it works, skip to Setup Step 4.
+
+If MCP tools are still not available, check for the auth cache file:
+
+```bash
+cat ~/.claude/mcp-needs-auth-cache.json 2>/dev/null
+```
+
+If it contains "wildwood", the OAuth browser popup did not launch automatically. Proceed to the manual OAuth fallback below.
+
+### 3d: Manual OAuth Fallback
+
+When the browser doesn't auto-launch (common in VS Code extension), perform the OAuth flow manually:
+
+**Step 1** — Register a dynamic OAuth client:
+
+```bash
+curl -s -X POST https://api.wildwoodworks.io/oauth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_name": "Claude Code - Manual Auth",
+    "redirect_uris": ["http://127.0.0.1:9876/callback"],
+    "grant_types": ["authorization_code", "refresh_token"],
+    "response_types": ["code"],
+    "token_endpoint_auth_method": "none",
+    "scope": "mcp"
+  }'
+```
+
+Save the returned `client_id`.
+
+**Step 2** — Generate PKCE parameters and the authorize URL:
+
+```bash
+CODE_VERIFIER=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")
+CODE_CHALLENGE=$(python3 -c "
+import hashlib, base64, sys
+v = sys.argv[1]
+d = hashlib.sha256(v.encode()).digest()
+print(base64.urlsafe_b64encode(d).rstrip(b'=').decode())
+" "$CODE_VERIFIER")
+STATE=$(python3 -c "import secrets; print(secrets.token_urlsafe(16))")
+```
+
+**Step 3** — Present the URL to the user:
+
+Build the authorize URL and display it clearly:
+
+```
+https://api.wildwoodworks.io/oauth/authorize?response_type=code&client_id={CLIENT_ID}&redirect_uri=http%3A%2F%2F127.0.0.1%3A9876%2Fcallback&scope=mcp&state={STATE}&code_challenge={CODE_CHALLENGE}&code_challenge_method=S256
+```
+
+Tell the user:
+
+> Open this URL in your browser and sign in with your Wildwood account.
+> After signing in, your browser will redirect to a page that won't load (this is expected).
+> Copy the full URL from your browser's address bar and paste it back here.
+> It will look like: `http://127.0.0.1:9876/callback?code=XXXXX&state=XXXXX`
+
+**Step 4** — Exchange the code for tokens:
+
+When the user pastes the callback URL, extract the `code` parameter and exchange it:
+
+```bash
+curl -s -X POST https://api.wildwoodworks.io/oauth/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=authorization_code&code={CODE}&redirect_uri=http://127.0.0.1:9876/callback&client_id={CLIENT_ID}&code_verifier={CODE_VERIFIER}"
+```
+
+Save the returned `access_token` and `refresh_token`.
+
+**Step 5** — Store credentials and test:
+
+Store the access token in the MCP server config so Claude Code can use it, then verify by calling `wildwood_get_app_info`. If successful, proceed to Setup Step 4.
+
+**Important:** Always try the automatic flow first (steps 3a-3c). Only use the manual fallback if the browser popup doesn't appear after a restart. Tell the user upfront during step 3b: "After restarting, a browser window should open for Wildwood login. If it doesn't, let me know and I'll provide a manual login URL."
 
 ## Setup Step 4: Verify App Setup
 
@@ -859,12 +930,7 @@ Use `WebFetch` or `curl` to call this endpoint. Parse the JSON response:
 2. If successful, report: "MCP connection: Authenticated — connected as {user}"
 3. If MCP tools are not available in this session:
    - Report: "MCP connection: Not Connected"
-   - If the health check passed (server is online), the issue is client-side. **Automatically** run the command to register the MCP server using Bash:
-     ```bash
-     claude mcp add --transport http wildwood https://api.wildwoodworks.io/mcp
-     ```
-     On Windows (non-WSL), use `claude.exe` instead. Detect the OS and run the correct command. Then tell the user:
-     > "The Wildwood MCP server has been registered. Run `/mcp` in Claude Code to authenticate (a browser will open for login). After that, run `/wildwood status` again."
+   - If the health check passed (server is online), the issue is client-side. Follow the same connection flow as **Setup Step 3** (sections 3b through 3d) to register and authenticate the MCP server. This includes the automatic flow first and the manual OAuth fallback if the browser popup doesn't appear.
    - If the health check also failed, the server itself may be down
 
 ## Status Step 3: App Overview
