@@ -77,42 +77,23 @@ Explain what WildwoodAdmin provides:
 
 ## Setup Step 3: Connect via MCP
 
-**Do all of the following automatically without asking the user.**
-
 ### 3a: Check if MCP tools are already available
 
 Try calling `wildwood_get_app_info` via MCP. If it works, the user is already connected — skip to Setup Step 4.
 
-### 3b: If MCP tools are NOT available, ensure the config exists
+### 3b: If MCP tools are NOT available, add the server
 
-Use Bash to check if `~/.mcp.json` exists and contains a `wildwood` entry:
+Tell the user to run this command in their terminal (outside of Claude Code):
 
-```bash
-cat ~/.mcp.json 2>/dev/null
+```
+claude mcp add --transport http wildwood https://api.wildwoodworks.io/mcp
 ```
 
-**If the file doesn't exist or doesn't contain "wildwood"**, write it automatically:
+This registers the Wildwood MCP server with Claude Code. Then tell them:
 
-- If the file doesn't exist, create `~/.mcp.json` with:
-  ```json
-  {
-    "mcpServers": {
-      "wildwood": {
-        "type": "http",
-        "url": "https://api.wildwoodworks.io/mcp"
-      }
-    }
-  }
-  ```
-- If the file exists but has no `wildwood` entry, read it, add the wildwood server to the `mcpServers` object, and write it back. Use `node -e` or `python3 -c` to merge JSON safely.
+> "Now run `/mcp` in Claude Code — it will open a browser window for you to log in with your Wildwood account. After logging in, run `/wildwood setup` again and I'll continue where we left off."
 
-### 3c: Tell the user to restart
-
-Once the config is confirmed in place, tell the user:
-
-> "The Wildwood MCP server is configured. **Restart Claude Code** (exit and reopen) — when it starts, it will connect to the MCP server and open a browser window for you to log in with your Wildwood account. After logging in, run `/wildwood setup` again and I'll continue where we left off."
-
-**Do NOT ask the user to run any commands.** The restart is the only manual step required — everything else should be automatic.
+**How it works:** When the user runs `/mcp`, Claude Code discovers the OAuth endpoints automatically, opens a browser to the Wildwood login page, and stores the authentication tokens securely. This is the same flow used by Sentry, Notion, and other MCP servers.
 
 ## Setup Step 4: Verify App Setup
 
@@ -872,8 +853,10 @@ Use `WebFetch` or `curl` to call this endpoint. Parse the JSON response:
 2. If successful, report: "MCP connection: Authenticated — connected as {user}"
 3. If MCP tools are not available in this session:
    - Report: "MCP connection: Not Connected"
-   - If the health check passed (server is online), the issue is client-side. **Automatically** check if `~/.mcp.json` contains the wildwood config using Bash (`cat ~/.mcp.json`). If it's missing, write it (see Setup Step 3b for the JSON). Then tell the user:
-     > "The MCP server is configured but not connected yet. **Restart Claude Code** — it will connect and open a browser for OAuth login. Then run `/wildwood status` again."
+   - If the health check passed (server is online), the issue is client-side. Tell the user:
+     > "The MCP server is online but not connected in this session. Run this in your terminal:
+     > `claude mcp add --transport http wildwood https://api.wildwoodworks.io/mcp`
+     > Then run `/mcp` in Claude Code to authenticate (a browser will open for login). After that, run `/wildwood status` again."
    - If the health check also failed, the server itself may be down
 
 ## Status Step 3: App Overview

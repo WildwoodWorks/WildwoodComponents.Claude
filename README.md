@@ -33,7 +33,7 @@ cd WildwoodComponents.Claude
 
 If you just want the MCP tools without the skills:
 ```bash
-claude mcp add wildwood --transport http --url https://api.wildwoodworks.io/mcp
+claude mcp add --transport http wildwood https://api.wildwoodworks.io/mcp
 ```
 
 ## What You Get
@@ -87,8 +87,9 @@ The core value of the Wildwood platform is **pre-built, production-ready UI comp
 ## Quick Start
 
 1. Run the install script (see Installation above)
-2. Restart Claude Code — it will connect to the MCP server and open a browser for login
-3. Run `/wildwood` to get started
+2. Restart Claude Code
+3. Run `/mcp` in Claude Code — a browser will open for you to log in with your Wildwood account
+4. Run `/wildwood` to get started
 
 ## Links
 
