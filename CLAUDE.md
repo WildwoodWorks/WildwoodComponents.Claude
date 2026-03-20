@@ -10,20 +10,23 @@ This plugin connects Claude Code to the **Wildwood platform**, giving you tools 
 
 **WildwoodAdmin** at https://admin.wildwoodworks.io provides administration, analytics, and configuration via a web UI. The same configuration is also available via MCP tools — Claude can fully configure apps without leaving the terminal.
 
-## Available Skills
+## Skill
 
-| Skill | Purpose |
-|-------|---------|
-| `/wildwood-setup` | Create a Wildwood account and configure your first app |
-| `/wildwood-integrate` | Add WildwoodComponents SDK to any project (React, React Native, Blazor, Node.js) |
-| `/wildwood-deploy-app` | Build and deploy your app to popular hosting services (Vercel, Netlify, Azure, Railway, Fly.io, etc.) |
-| `/wildwood-hosting` | Manage app hosting deployments on Wildwood — create, start, stop, rollback, domains, and metrics |
-| `/wildwood-database-hosting` | Manage hosted Azure SQL databases — provision, backup, restore, and monitor |
-| `/wildwood-status` | Check app status, deployments, databases, and quota usage |
+Everything is accessed through a single command: **`/wildwood`**
+
+Just tell it what you need — setup, integrate, deploy, hosting, database, or status — and it routes to the right workflow. Examples:
+
+- `/wildwood` — show menu
+- `/wildwood setup` — create account, connect MCP
+- `/wildwood integrate` — add SDK to your project
+- `/wildwood deploy` — build and deploy your app
+- `/wildwood hosting` — manage Wildwood-hosted deployments
+- `/wildwood database` — manage hosted Azure SQL databases
+- `/wildwood status` — check platform health and app status
 
 ## MCP Server Connection
 
-This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io/mcp`. On first connection, a browser window opens for OAuth login at WildwoodAdmin. After authentication, Claude can use 70 MCP tools (31 read, 39 write) to query and fully configure Wildwood apps — including AI providers, auth, payments, themes, CAPTCHA, tiers, add-ons, subscriptions, app hosting, and database hosting. All write tools require `confirm: true` and auto-snapshot before changes. See `/wildwood-platform` for the full tool reference.
+This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io/mcp`. On first connection, a browser window opens for OAuth login at WildwoodAdmin. After authentication, Claude can use 70 MCP tools (31 read, 39 write) to query and fully configure Wildwood apps — including AI providers, auth, payments, themes, CAPTCHA, tiers, add-ons, subscriptions, app hosting, and database hosting. All write tools require `confirm: true` and auto-snapshot before changes. Run `/wildwood` for the full tool reference and all platform workflows.
 
 ## SDK Packages
 

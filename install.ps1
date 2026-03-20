@@ -32,6 +32,16 @@ Write-Host "[1/3] Installing skills..." -ForegroundColor Green
 $CommandsDir = Join-Path $ProjectDir ".claude\commands"
 New-Item -ItemType Directory -Path $CommandsDir -Force | Out-Null
 
+# Remove old individual skill files from previous versions
+$OldSkills = @("wildwood-setup", "wildwood-integrate", "wildwood-deploy-app", "wildwood-hosting", "wildwood-database-hosting", "wildwood-status", "wildwood-platform")
+foreach ($OldSkill in $OldSkills) {
+    $OldFile = Join-Path $CommandsDir "$OldSkill.md"
+    if (Test-Path $OldFile) {
+        Remove-Item $OldFile
+        Write-Host "  - removed old /$OldSkill (consolidated into /wildwood)"
+    }
+}
+
 Get-ChildItem (Join-Path $PluginDir "skills") -Directory | ForEach-Object {
     $SkillName = $_.Name
     Copy-Item (Join-Path $_.FullName "SKILL.md") (Join-Path $CommandsDir "$SkillName.md") -Force
@@ -96,7 +106,7 @@ Write-Host "Done! Wildwood plugin installed successfully." -ForegroundColor Gree
 Write-Host ""
 Write-Host "Next steps:"
 Write-Host "  1. Start Claude Code in your project directory"
-Write-Host "  2. Run /wildwood-setup to create your account" -ForegroundColor Cyan
-Write-Host "  3. Run /wildwood-integrate to add components to your project" -ForegroundColor Cyan
+Write-Host "  2. Run /wildwood setup to create your account" -ForegroundColor Cyan
+Write-Host "  3. Run /wildwood integrate to add components to your project" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "The MCP server will prompt for OAuth login on first use."

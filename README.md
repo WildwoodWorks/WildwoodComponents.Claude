@@ -38,20 +38,25 @@ claude mcp add wildwood --transport http --url https://api.wildwoodworks.io/mcp
 
 ## What You Get
 
-### Skills
+### `/wildwood` Command
 
-| Skill | Description |
-|-------|-------------|
-| `/wildwood-setup` | Create a Wildwood account and configure your first app |
-| `/wildwood-integrate` | Add WildwoodComponents SDK to any project |
-| `/wildwood-deploy-app` | Build and deploy to Wildwood hosting |
-| `/wildwood-status` | Check app status, deployments, and quotas |
+One command does everything — just tell it what you need:
+
+```
+/wildwood              → show menu
+/wildwood setup        → create account, connect MCP
+/wildwood integrate    → add SDK to your project
+/wildwood deploy       → build and deploy your app
+/wildwood hosting      → manage Wildwood-hosted deployments
+/wildwood database     → manage hosted Azure SQL databases
+/wildwood status       → check platform health and app status
+```
 
 ### MCP Server Connection
 
 Connects Claude to the Wildwood API at `api.wildwoodworks.io/mcp` via OAuth 2.1. On first use, a browser window opens for authentication at [WildwoodAdmin](https://admin.wildwoodworks.io).
 
-Once connected, Claude can query and manage your Wildwood apps directly using 14+ MCP tools.
+Once connected, Claude can query and manage your Wildwood apps directly using 46 MCP tools (20 read, 26 write).
 
 ## WildwoodComponents
 
@@ -83,9 +88,9 @@ The core value of the Wildwood platform is **pre-built, production-ready UI comp
 
 1. Run the install script (see Installation above)
 2. Start Claude Code in your project directory
-3. Run `/wildwood-setup` to create your account and first app
-4. Run `/wildwood-integrate` to add components to your project
-5. Run `/wildwood-deploy-app` to deploy
+3. Run `/wildwood setup` to create your account and first app
+4. Run `/wildwood integrate` to add components to your project
+5. Run `/wildwood deploy` to deploy
 
 ## Links
 

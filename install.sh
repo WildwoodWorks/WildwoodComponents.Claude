@@ -34,10 +34,19 @@ echo ""
 # 1. Copy skills to .claude/commands/
 echo -e "${GREEN}[1/3]${NC} Installing skills..."
 mkdir -p "$PROJECT_DIR/.claude/commands"
+
+# Remove old individual skill files from previous versions
+for old_skill in wildwood-setup wildwood-integrate wildwood-deploy-app wildwood-hosting wildwood-database-hosting wildwood-status wildwood-platform; do
+    if [[ -f "$PROJECT_DIR/.claude/commands/${old_skill}.md" ]]; then
+        rm "$PROJECT_DIR/.claude/commands/${old_skill}.md"
+        echo "  - removed old /${old_skill} (consolidated into /wildwood)"
+    fi
+done
+
 for skill_dir in "$PLUGIN_DIR/skills"/*/; do
     skill_name="$(basename "$skill_dir")"
     cp "$skill_dir/SKILL.md" "$PROJECT_DIR/.claude/commands/${skill_name}.md"
-    echo "  + /$(echo "$skill_name" | tr '-' '-')"
+    echo "  + /${skill_name}"
 done
 
 # 2. Configure MCP server
@@ -99,7 +108,7 @@ echo -e "${GREEN}Done!${NC} Wildwood plugin installed successfully."
 echo ""
 echo -e "Next steps:"
 echo -e "  1. Start Claude Code in your project directory"
-echo -e "  2. Run ${CYAN}/wildwood-setup${NC} to create your account"
-echo -e "  3. Run ${CYAN}/wildwood-integrate${NC} to add components to your project"
+echo -e "  2. Run ${CYAN}/wildwood setup${NC} to create your account"
+echo -e "  3. Run ${CYAN}/wildwood integrate${NC} to add components to your project"
 echo ""
 echo -e "The MCP server will prompt for OAuth login on first use."
