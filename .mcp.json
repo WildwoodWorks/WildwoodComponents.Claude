@@ -2,7 +2,7 @@
   "mcpServers": {
     "wildwood": {
       "type": "http",
-      "url": "https://api.wildwoodworks.com.co/mcp"
+      "url": "https://api.wildwoodworks.io/mcp"
     }
   }
 }

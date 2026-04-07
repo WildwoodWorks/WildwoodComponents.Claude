@@ -4,32 +4,59 @@ A Claude Code plugin that connects Claude to the **Wildwood platform** — givin
 
 ## Installation
 
-```
-/plugin install github:WildwoodWorks/WildwoodComponents.Claude
+### One-liner (recommended)
+
+**macOS / Linux:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/WildwoodWorks/WildwoodComponents.Claude/master/install.sh | bash
 ```
 
-Or clone and reference locally:
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/WildwoodWorks/WildwoodComponents.Claude/master/install.ps1 | iex
+```
+
+This installs skills, MCP server config, and platform context into your current project directory.
+
+### From a cloned repo
 
 ```bash
 git clone https://github.com/WildwoodWorks/WildwoodComponents.Claude.git
+cd WildwoodComponents.Claude
+
+# Install into current project
+./install.sh /path/to/your/project       # macOS/Linux
+.\install.ps1 -ProjectDir C:\your\project # Windows
+```
+
+### MCP server only
+
+If you just want the MCP tools without the skills:
+```bash
+claude mcp add --transport http wildwood https://api.wildwoodworks.io/mcp
 ```
 
 ## What You Get
 
-### Skills
+### `/wildwood` Command
 
-| Skill | Description |
-|-------|-------------|
-| `/wildwood-setup` | Create a Wildwood account and configure your first app |
-| `/wildwood-integrate` | Add WildwoodComponents SDK to any project |
-| `/wildwood-deploy-app` | Build and deploy to Wildwood hosting |
-| `/wildwood-status` | Check app status, deployments, and quotas |
+One command does everything — just tell it what you need:
+
+```
+/wildwood              → show menu
+/wildwood setup        → create account, connect MCP
+/wildwood integrate    → add SDK to your project
+/wildwood deploy       → build and deploy your app
+/wildwood hosting      → manage Wildwood-hosted deployments
+/wildwood database     → manage hosted Azure SQL databases
+/wildwood status       → check platform health and app status
+```
 
 ### MCP Server Connection
 
-Connects Claude to the Wildwood API at `api.wildwoodworks.com.co/mcp` via OAuth 2.1. On first use, a browser window opens for authentication at [WildwoodAdmin](https://www.wildwoodworks.com.co).
+Connects Claude to the Wildwood API at `api.wildwoodworks.io/mcp` via OAuth 2.1. On first use, a browser window opens for authentication at [WildwoodAdmin](https://admin.wildwoodworks.io).
 
-Once connected, Claude can query and manage your Wildwood apps directly using 14+ MCP tools.
+Once connected, Claude can query and manage your Wildwood apps directly using 46 MCP tools (20 read, 26 write).
 
 ## WildwoodComponents
 
@@ -59,16 +86,16 @@ The core value of the Wildwood platform is **pre-built, production-ready UI comp
 
 ## Quick Start
 
-1. Install the plugin: `/plugin install github:WildwoodWorks/WildwoodComponents.Claude`
-2. Run `/wildwood-setup` to create your account and first app
-3. Run `/wildwood-integrate` to add components to your project
-4. Run `/wildwood-deploy-app` to deploy
+1. Run the install script (see Installation above)
+2. Restart Claude Code
+3. Run `/mcp` in Claude Code — a browser will open for you to log in with your Wildwood account
+4. Run `/wildwood` to get started
 
 ## Links
 
-- **Admin Portal**: https://www.wildwoodworks.com.co
-- **API**: https://api.wildwoodworks.com.co/api
-- **Documentation**: https://www.wildwoodworks.com.co/docs
+- **Admin Portal**: https://admin.wildwoodworks.io
+- **API**: https://api.wildwoodworks.io/api
+- **Documentation**: https://admin.wildwoodworks.io/docs
 - **GitHub**: https://github.com/WildwoodWorks
 
 ## License
