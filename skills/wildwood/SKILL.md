@@ -174,14 +174,31 @@ curl -fsS -X POST https://api.wildwoodworks.io/oauth/register \
 
 Expect: HTTP 201 with a JSON body containing `client_id` (and `client_id_issued_at`, `token_endpoint_auth_method: "none"`).
 
+**Diagnostic 5** — CIMD loopback wildcard-port acceptance (RFC 8252 §7.3):
+
+Why this exists: Anthropic's published CIMD document registers `http://localhost/callback` with NO port (meaning "any port on loopback" per RFC 8252). Claude Code's local listener uses a random ephemeral port. If the server does strict string matching on the CIMD path, every Claude Code OAuth attempt silently fails. This check exercises that exact path so the bug class can't silently regress.
+
+```bash
+curl -i -s "https://api.wildwoodworks.io/oauth/authorize?response_type=code\
+&client_id=$(printf 'https://claude.ai/oauth/claude-code-client-metadata' | jq -sRr @uri)\
+&redirect_uri=$(printf 'http://localhost:54321/callback' | jq -sRr @uri)\
+&scope=mcp&state=diag5&code_challenge=test&code_challenge_method=S256\
+&resource=$(printf 'https://api.wildwoodworks.io/mcp' | jq -sRr @uri)" \
+  2>&1 | head -10
+```
+
+Expect: HTTP `302` redirect to the consent / login screen (or `200` rendering it). **NOT** `400 invalid_request` / `invalid_redirect_uri`.
+
 **Interpreting results:**
 
 | Result | Likely cause | Action |
 |--------|-------------|--------|
-| All four succeed | Server is conformant; bug is in Claude Code | File at github.com/anthropics/claude-code/issues with the curl output |
+| All five succeed | Server is conformant; bug is in Claude Code | File at github.com/anthropics/claude-code/issues with the curl output |
 | #1 or #2 fails (404 / non-JSON) | OAuth discovery broken on server | File at Wildwood support |
 | #3 returns 200 instead of 401 | Server-side auth middleware not engaging | File at Wildwood support |
 | #4 fails | DCR endpoint broken | File at Wildwood support |
+| #5 returns 400 `invalid_redirect_uri` | CIMD validator doing strict string match — RFC 8252 §7.3 loopback fix not applied | File at Wildwood support, reference the CIMD-loopback fix plan |
+| #5 returns 400 `invalid_client` | CIMD document fetch failing — claude.ai connectivity or CIMD service caching stale data | File at Wildwood support |
 | Network errors | Connectivity / DNS / firewall | Check connectivity to api.wildwoodworks.io |
 
 **Important:** The diagnostics above do *not* complete authentication for the user — they only localize which side has the bug. The native `/mcp` flow in step 3c is the **only** path that actually authenticates Claude Code. Diagnostics tell you whether the bug is on Wildwood's side (file with Wildwood support) or Claude Code's side (file at github.com/anthropics/claude-code/issues with the curl output and your Claude Code version).
@@ -397,17 +414,34 @@ curl -fsS -X POST https://api.wildwoodworks.io/oauth/register \
 
 Pass criteria: HTTP 201 with JSON containing `client_id`, `client_id_issued_at`, `token_endpoint_auth_method: "none"`, `application_type: "native"`.
 
+**Check 5 — CIMD loopback wildcard-port acceptance (RFC 8252 §7.3):**
+
+This is the case that broke Claude Code OAuth in early 2026 and is the easiest one to regress: Anthropic's CIMD document registers `http://localhost/callback` (no port), Claude Code's listener binds a random port like 49459, and a strict-string matcher rejects the combination.
+
+```bash
+curl -i -s "https://api.wildwoodworks.io/oauth/authorize?response_type=code\
+&client_id=$(printf 'https://claude.ai/oauth/claude-code-client-metadata' | jq -sRr @uri)\
+&redirect_uri=$(printf 'http://localhost:54321/callback' | jq -sRr @uri)\
+&scope=mcp&state=diag5&code_challenge=test&code_challenge_method=S256\
+&resource=$(printf 'https://api.wildwoodworks.io/mcp' | jq -sRr @uri)" \
+  2>&1 | head -10
+```
+
+Pass criteria: HTTP `302` to the consent / login screen (or `200` rendering it). NOT `400 invalid_redirect_uri`.
+
 ## Diagnose Step 3: Interpret and act
 
 | Observed | Bug lives at | Concrete next step for the user |
 |---|---|---|
-| All four checks pass + tools still missing in Claude Code | Claude Code's MCP client | File at https://github.com/anthropics/claude-code/issues with the four curl outputs, your Claude Code version (`claude --version`), and your `~/.claude/mcp-needs-auth-cache.json` content. Workaround: try a fresh Claude Code restart and run `/mcp` from the menu. |
+| All five checks pass + tools still missing in Claude Code | Claude Code's MCP client | File at https://github.com/anthropics/claude-code/issues with the curl outputs, your Claude Code version (`claude --version`), and your `~/.claude/mcp-needs-auth-cache.json` content. Workaround: try a fresh Claude Code restart and run `/mcp` from the menu. |
 | Check 1 fails (404 or non-JSON) | Wildwood server | OAuth Authorization Server Metadata endpoint is broken on Wildwood. File at Wildwood support with the curl output. |
 | Check 2 fails (404) | Wildwood server | Protected Resource Metadata endpoint not served. Claude Code can't discover the AS. File at Wildwood support. |
 | Check 3 returns 200 instead of 401 | Wildwood server | JWT middleware not engaging on `/mcp` — auth bypass. File at Wildwood support (security-relevant). |
 | Check 3 returns 401 but missing `WWW-Authenticate` header | Wildwood server | Claude Code can't detect that auth is required. File at Wildwood support. |
 | Check 4 fails with 4xx | Wildwood server | DCR endpoint is rejecting valid registration requests. File at Wildwood support with the curl response body (the error code names the violation). |
 | Check 4 succeeds but returns `token_endpoint_auth_method` other than `"none"` | Wildwood server | DCR is forcing client_secret which Claude Code can't provide. File at Wildwood support. |
+| Check 5 returns 400 `invalid_redirect_uri` | Wildwood server | CIMD validator doing strict string match — RFC 8252 §7.3 loopback fix not applied. Every Claude Code OAuth attempt will fail. File at Wildwood support, reference the CIMD-loopback fix plan. |
+| Check 5 returns 400 `invalid_client` | Wildwood server | CIMD document fetch failing — either the server can't reach claude.ai or the CIMD service rejected the document. File at Wildwood support with the response body. |
 | Network errors / TLS errors on any check | User's environment | Check connectivity to api.wildwoodworks.io. If the user is behind a corporate proxy, ensure `api.wildwoodworks.io` is allowlisted. |
 | Inside Claude Code: `wildwood_*` tools appear once then disappear after ~1 hour | Either side; most likely Claude Code | Refresh-token flow not used on access-token expiry. Workaround: restart Claude Code. Bug report: Claude Code GitHub issues. As of 2026-05-26 Wildwood access tokens last 24 h so this should be rare. |
 | OAuth completes successfully but tools never surface | Claude Code | Clear stuck state: `rm ~/.claude/mcp-needs-auth-cache.json && fully quit/reopen Claude Code` (just closing the window isn't enough — in-process credential store needs a fresh PID). |
