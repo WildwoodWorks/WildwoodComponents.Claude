@@ -18,6 +18,7 @@ Parse the user's message (the text after `/wildwood`) to determine intent:
 | "hosting", "manage deployments", "start/stop app" | **Hosting** |
 | "database", "db", "provision database", "backup" | **Database Hosting** |
 | "status", "health", "check", "what's running" | **Status** |
+| "diagnose", "diagnostics", "MCP broken", "OAuth failing", "tools not appearing" | **Diagnose** |
 | "help", "what can you do", "docs", "reference" | **Show Menu** |
 | Anything about configuring AI, auth, payments, themes, tiers | **Integrate** (Step 5) |
 | Anything about MCP tools, snapshots, rollback | **Platform Reference** |
@@ -37,6 +38,7 @@ What would you like to do?
 4. Hosting    — Manage Wildwood-hosted app deployments
 5. Database   — Provision and manage hosted Azure SQL databases
 6. Status     — Check platform health, app status, and usage
+7. Diagnose   — Troubleshoot MCP connection / OAuth issues
 
 Just tell me what you need, or pick a number.
 
@@ -77,6 +79,8 @@ Explain what WildwoodAdmin provides:
 
 ## Setup Step 3: Connect via MCP
 
+Wildwood uses the native Claude Code MCP OAuth flow. The user clicks "Allow" once in a browser and Claude Code handles registration, PKCE, the localhost callback, and refresh-token persistence end to end. The shim flow (`mcp__wildwood__authenticate` / `mcp__wildwood__complete_authentication`) only exists as a last-resort fallback — **do not lead with it.**
+
 ### 3a: Check if MCP tools are already available
 
 Try calling `wildwood_get_app_info` via MCP. If it works, the user is already connected — skip to Setup Step 4.
@@ -91,19 +95,34 @@ npx @anthropic-ai/claude-code mcp add --transport http wildwood https://api.wild
 
 If `claude` is on PATH, use `claude mcp add --transport http wildwood https://api.wildwoodworks.io/mcp` instead. On Windows (non-WSL), use `claude.exe`.
 
-After registering, tell the user to restart Claude Code (or close and reopen VS Code if using the extension).
+After registering, tell the user upfront: **"After we restart, a browser window should open for Wildwood login. Click Allow and you're done — no URL copying. If the browser doesn't open, let me know and I'll run a diagnostic."**
 
-### 3c: After restart — check if OAuth completed
+Then have them restart Claude Code (or close and reopen VS Code if using the extension).
 
-Try `wildwood_get_app_info` again. If it works, skip to Setup Step 4.
+### 3c: After restart — trigger the native OAuth flow
 
-If MCP tools are still not available, check for the auth cache file:
+Inside Claude Code, the native command is:
+
+```
+/mcp
+```
+
+This opens the MCP server menu. Tell the user to:
+1. Select **wildwood**
+2. Choose **Connect** / **Authenticate** (label depends on Claude Code version)
+3. A browser window will open to Wildwood
+4. Sign in, click **Allow**
+5. Browser auto-redirects to a `http://localhost:...` page that may say "page can't be loaded" — that's fine, Claude Code already caught the callback
+
+After the browser closes (or shows the localhost page), try `wildwood_get_app_info` again. If it works, you're done — skip to Setup Step 4.
+
+If it still doesn't work, check whether OAuth completed silently or stalled:
 
 ```bash
 cat ~/.claude/mcp-needs-auth-cache.json 2>/dev/null
 ```
 
-If it contains "wildwood", the OAuth browser popup did not launch automatically. Proceed to the OAuth diagnostics below to localize the bug.
+If that file mentions `wildwood`, OAuth didn't finish. Proceed to **Setup Step 3d (OAuth Diagnostics)** to figure out whether the bug is on the Wildwood side or Claude Code side.
 
 ### 3d: OAuth Diagnostics (when automatic flow fails)
 
@@ -162,7 +181,7 @@ Expect: HTTP 201 with a JSON body containing `client_id` (and `client_id_issued_
 | #4 fails | DCR endpoint broken | File at Wildwood support |
 | Network errors | Connectivity / DNS / firewall | Check connectivity to api.wildwoodworks.io |
 
-**Important:** Always try the automatic flow first (steps 3a-3c). The diagnostics above do *not* complete authentication — they only tell you where the bug lives. Tell the user upfront during step 3b: "After restarting, a browser window should open for Wildwood login. If it doesn't, let me know and I'll run a diagnostic to figure out where the bug is."
+**Important:** The diagnostics above do *not* complete authentication for the user — they only localize which side has the bug. The native `/mcp` flow in step 3c is the **only** path that actually authenticates Claude Code. Diagnostics tell you whether the bug is on Wildwood's side (file with Wildwood support) or Claude Code's side (file at github.com/anthropics/claude-code/issues with the curl output and your Claude Code version).
 
 ## Setup Step 4: Verify App Setup
 
@@ -218,6 +237,104 @@ Remind them:
 - **WildwoodComponents** are pre-built, production-ready UI components that save development time and AI tokens
 - **WildwoodAdmin** or **MCP tools** provide all administration and configuration
 - All SDKs are available at https://github.com/WildwoodWorks
+
+---
+
+# Diagnose
+
+The user invoked this when MCP tools aren't appearing, OAuth is silently failing, or `wildwood_*` calls return errors. Work through the steps below in order — env detection first (tells us which OAuth flow path Claude Code can actually use), then server conformance, then interpretation with crisp next-actions.
+
+## Diagnose Step 1: Detect the user's environment
+
+Some environments cannot complete the browser-based OAuth flow (SSH, headless containers, etc.) and need device flow instead. Run this once:
+
+```bash
+ENV=""
+if [ -n "$SSH_CONNECTION" ]; then ENV="ssh";
+elif grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null; then
+  if command -v wslview >/dev/null 2>&1; then ENV="wsl-with-browser"; else ENV="wsl-headless"; fi
+elif [ -n "$CODESPACES" ] || [ -n "$REPL_SLUG" ] || [ -n "$GITPOD_WORKSPACE_ID" ]; then ENV="cloud-ide";
+elif [ -f /.dockerenv ]; then ENV="docker";
+else ENV="local-desktop";
+fi
+echo "Environment: $ENV"
+```
+
+Interpret:
+
+| `$ENV` value | Best OAuth path | Notes |
+|---|---|---|
+| `local-desktop` | Native browser flow (`/mcp` inside Claude Code) | The default — should "just work" |
+| `wsl-with-browser` | Native browser flow | `wslview` bridges WSL → Windows browser |
+| `wsl-headless` | Device flow (`/wildwood setup --device`) | No browser bridge |
+| `ssh` | Device flow | Remote terminal, no local browser |
+| `docker` | Device flow | Container, no display |
+| `cloud-ide` | Device flow | Codespaces / Replit / Gitpod |
+
+If the user is in any `device-flow` environment and OAuth is failing, recommend `/wildwood setup --device` (see Setup Step 3 — Device Flow). If they're on `local-desktop` or `wsl-with-browser` and OAuth still fails, continue to step 2.
+
+## Diagnose Step 2: Server OAuth conformance checks
+
+Run the four curls and report each result. These all hit Wildwood production; they don't require authentication, are read-only on first three, and the fourth registers a throwaway DCR client.
+
+**Check 1 — Authorization Server Metadata (RFC 8414):**
+
+```bash
+curl -fsS https://api.wildwoodworks.io/.well-known/oauth-authorization-server | head -25
+```
+
+Pass criteria: JSON returned with `issuer`, `authorization_endpoint`, `token_endpoint`, `registration_endpoint`, `code_challenge_methods_supported: ["S256"]`, `token_endpoint_auth_methods_supported: ["none"]`, `authorization_response_iss_parameter_supported: true`.
+
+**Check 2 — Protected Resource Metadata (RFC 9728):**
+
+```bash
+curl -fsS https://api.wildwoodworks.io/.well-known/oauth-protected-resource | head -15
+```
+
+Pass criteria: JSON returned with `resource: "https://api.wildwoodworks.io/mcp"`, `authorization_servers`, `scopes_supported: ["mcp"]`.
+
+**Check 3 — `/mcp` returns proper 401 challenge:**
+
+```bash
+curl -i https://api.wildwoodworks.io/mcp 2>&1 | head -15
+```
+
+Pass criteria: `HTTP/1.1 401 Unauthorized` AND a `WWW-Authenticate: Bearer realm="mcp", resource_metadata="..."` header.
+
+**Check 4 — Dynamic Client Registration (RFC 7591):**
+
+```bash
+curl -fsS -X POST https://api.wildwoodworks.io/oauth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_name": "Wildwood Diagnose",
+    "redirect_uris": ["http://127.0.0.1:9876/callback"],
+    "grant_types": ["authorization_code", "refresh_token"],
+    "response_types": ["code"],
+    "token_endpoint_auth_method": "none",
+    "application_type": "native",
+    "scope": "mcp"
+  }'
+```
+
+Pass criteria: HTTP 201 with JSON containing `client_id`, `client_id_issued_at`, `token_endpoint_auth_method: "none"`, `application_type: "native"`.
+
+## Diagnose Step 3: Interpret and act
+
+| Observed | Bug lives at | Concrete next step for the user |
+|---|---|---|
+| All four checks pass + tools still missing in Claude Code | Claude Code's MCP client | File at https://github.com/anthropics/claude-code/issues with the four curl outputs, your Claude Code version (`claude --version`), and your `~/.claude/mcp-needs-auth-cache.json` content. Workaround: try a fresh Claude Code restart and run `/mcp` from the menu. |
+| Check 1 fails (404 or non-JSON) | Wildwood server | OAuth Authorization Server Metadata endpoint is broken on Wildwood. File at Wildwood support with the curl output. |
+| Check 2 fails (404) | Wildwood server | Protected Resource Metadata endpoint not served. Claude Code can't discover the AS. File at Wildwood support. |
+| Check 3 returns 200 instead of 401 | Wildwood server | JWT middleware not engaging on `/mcp` — auth bypass. File at Wildwood support (security-relevant). |
+| Check 3 returns 401 but missing `WWW-Authenticate` header | Wildwood server | Claude Code can't detect that auth is required. File at Wildwood support. |
+| Check 4 fails with 4xx | Wildwood server | DCR endpoint is rejecting valid registration requests. File at Wildwood support with the curl response body (the error code names the violation). |
+| Check 4 succeeds but returns `token_endpoint_auth_method` other than `"none"` | Wildwood server | DCR is forcing client_secret which Claude Code can't provide. File at Wildwood support. |
+| Network errors / TLS errors on any check | User's environment | Check connectivity to api.wildwoodworks.io. If the user is behind a corporate proxy, ensure `api.wildwoodworks.io` is allowlisted. |
+| Inside Claude Code: `wildwood_*` tools appear once then disappear after ~1 hour | Either side; most likely Claude Code | Refresh-token flow not used on access-token expiry. Workaround: restart Claude Code. Bug report: Claude Code GitHub issues. As of 2026-05-26 Wildwood access tokens last 24 h so this should be rare. |
+| OAuth completes successfully but tools never surface | Claude Code | Clear stuck state: `rm ~/.claude/mcp-needs-auth-cache.json && fully quit/reopen Claude Code` (just closing the window isn't enough — in-process credential store needs a fresh PID). |
+
+After running all three steps, report what you found to the user with the specific filing-instructions line from the table — don't say "something's wrong, file a bug" without naming **which** bug to file and where.
 
 ---
 
