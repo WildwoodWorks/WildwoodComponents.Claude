@@ -26,7 +26,7 @@ Just tell it what you need — setup, integrate, deploy, hosting, database, or s
 
 ## MCP Server Connection
 
-This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io/mcp`. On first connection, a browser window opens for OAuth login at WildwoodAdmin. After authentication, Claude can use 70 MCP tools (31 read, 39 write) to query and fully configure Wildwood apps — including AI providers, auth, payments, themes, CAPTCHA, tiers, add-ons, subscriptions, app hosting, and database hosting. All write tools require `confirm: true` and auto-snapshot before changes. Run `/wildwood` for the full tool reference and all platform workflows.
+This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io/mcp`. On first connection, a browser window opens for OAuth login at WildwoodAdmin. After authentication, Claude can use 76 MCP tools (33 read, 43 write) to query and fully configure Wildwood apps — including AI providers, auth, payments, themes, CAPTCHA, tiers, add-ons, subscriptions, app hosting, and database hosting. All write tools require `confirm: true` and auto-snapshot before changes. Run `/wildwood` for the full tool reference and all platform workflows.
 
 ## SDK Packages
 
@@ -52,9 +52,9 @@ This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io
 | Disclaimers | Terms acceptance with version-aware consent tracking | React, RN, Blazor |
 | Notifications | Toast notifications and in-app alerts | React, RN, Blazor |
 
-## MCP Tools (46 total)
+## MCP Tools (76 total)
 
-### Read Tools (20)
+### Read Tools (33)
 | Tool | Description |
 |------|-------------|
 | `wildwood_get_app_info` | Current app config (name, URLs, IsMCPEnabled) |
@@ -77,8 +77,21 @@ This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io
 | `wildwood_get_captcha_config` | CAPTCHA configuration (no secret key) |
 | `wildwood_get_subscription_config` | Subscription/billing settings |
 | `wildwood_list_pricing_models` | Company pricing models |
+| `wildwood_list_feature_overrides` | Active per-user / per-company feature overrides |
+| `wildwood_list_expiring_overrides` | Feature overrides expiring within N days |
+| `hosting_check_slug` | Check if a hosting subdomain slug is available |
+| `hosting_deployment_list` | List app deployments |
+| `hosting_deployment_get` | Get deployment details |
+| `hosting_deployment_logs` | Retrieve deployment build/runtime logs |
+| `hosting_domain_list` | List custom domains for a deployment |
+| `hosting_metrics` | Hosting metrics (requests, bandwidth, errors) |
+| `database_hosting_list` | List provisioned databases |
+| `database_hosting_get` | Get database details |
+| `database_hosting_stats` | Database usage stats |
+| `database_hosting_get_connection` | Retrieve database connection string |
+| `database_hosting_backup_list` | List database backups |
 
-### Write Tools (26) — require `confirm: true`
+### Write Tools (43) — require `confirm: true`
 | Tool | Description |
 |------|-------------|
 | `wildwood_create_app` | Create a new app |
@@ -107,6 +120,23 @@ This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io
 | `wildwood_manage_addon_feature` | Add/remove add-on features |
 | `wildwood_manage_addon_limit` | Add/update/remove add-on limits |
 | `wildwood_manage_addon_pricing` | Add/remove add-on pricing |
+| `wildwood_set_feature_override` | Grant/revoke a feature for a user or company outside their tier |
+| `wildwood_remove_feature_override` | Remove a feature override |
+| `hosting_deployment_create` | Create a new hosted deployment slot |
+| `hosting_deployment_deploy` | Deploy an app build to a hosted slot |
+| `hosting_deployment_start` | Start a deployment |
+| `hosting_deployment_stop` | Stop a deployment |
+| `hosting_deployment_rollback` | Roll a deployment back to a prior build |
+| `hosting_deployment_delete` | Delete a deployment |
+| `hosting_domain_add` | Add a custom domain |
+| `hosting_domain_remove` | Remove a custom domain |
+| `database_hosting_create` | Provision a new managed Azure SQL database |
+| `database_hosting_update` | Update database tier/size |
+| `database_hosting_delete` | Delete a database (irreversible) |
+| `database_hosting_suspend` | Suspend a database to reduce cost |
+| `database_hosting_resume` | Resume a suspended database |
+| `database_hosting_backup_create` | Create an on-demand backup |
+| `database_hosting_backup_restore` | Restore database from a backup |
 
 ## Configuring Components via MCP
 
