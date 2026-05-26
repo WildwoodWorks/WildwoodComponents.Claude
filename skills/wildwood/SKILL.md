@@ -85,6 +85,8 @@ Wildwood uses the native Claude Code MCP OAuth flow. The user clicks "Allow" onc
 
 Try calling `wildwood_get_app_info` via MCP. If it works, the user is already connected — skip to Setup Step 4.
 
+If the user typed `/wildwood setup --device` (or you've detected a headless environment via **Diagnose Step 1**), skip ahead to **Setup Step 3 — Device Flow Fallback** below.
+
 ### 3b: If MCP tools are NOT available, register the server
 
 Run via Bash to register the Wildwood MCP server:
@@ -182,6 +184,81 @@ Expect: HTTP 201 with a JSON body containing `client_id` (and `client_id_issued_
 | Network errors | Connectivity / DNS / firewall | Check connectivity to api.wildwoodworks.io |
 
 **Important:** The diagnostics above do *not* complete authentication for the user — they only localize which side has the bug. The native `/mcp` flow in step 3c is the **only** path that actually authenticates Claude Code. Diagnostics tell you whether the bug is on Wildwood's side (file with Wildwood support) or Claude Code's side (file at github.com/anthropics/claude-code/issues with the curl output and your Claude Code version).
+
+### 3e: Device Flow Fallback (`/wildwood setup --device`)
+
+Use when the user is in a headless environment (SSH, WSL without browser bridge, container, cloud IDE) — see **Diagnose Step 1** for environment detection. Wildwood now implements RFC 8628 (OAuth Device Authorization Grant) so the user enters a short code at `https://api.wildwoodworks.io/device` on any device with a browser instead of needing a localhost callback listener.
+
+**Important caveat:** As of 2026-05-26, Claude Code does NOT natively consume RFC 8628 for its MCP transport — so the token obtained here **cannot be injected into Claude Code's MCP credential store**. What this flow gives the user is a working Wildwood **REST API** token (and refresh token) they can use for direct `curl` / SDK calls. When Claude Code adds native device-flow support upstream, this same server-side endpoint will work end to end.
+
+If the user still wants to proceed (to verify the OAuth chain or to drive the REST API directly):
+
+```bash
+# 1. Request device + user codes
+CLIENT_ID=$(curl -fsS -X POST https://api.wildwoodworks.io/oauth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_name": "Wildwood CLI device-flow",
+    "redirect_uris": ["http://127.0.0.1/unused"],
+    "grant_types": ["urn:ietf:params:oauth:grant-type:device_code", "refresh_token"],
+    "response_types": ["code"],
+    "token_endpoint_auth_method": "none",
+    "application_type": "native",
+    "scope": "mcp"
+  }' | jq -r .client_id)
+
+RESP=$(curl -fsS -X POST https://api.wildwoodworks.io/oauth/device_authorization \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "client_id=$CLIENT_ID&scope=mcp&resource=https://api.wildwoodworks.io/mcp")
+
+USER_CODE=$(echo "$RESP" | jq -r .user_code)
+VERIFY_URL=$(echo "$RESP" | jq -r .verification_uri_complete)
+DEVICE_CODE=$(echo "$RESP" | jq -r .device_code)
+INTERVAL=$(echo "$RESP" | jq -r .interval)
+EXPIRES=$(echo "$RESP" | jq -r .expires_in)
+```
+
+2. **Show the user a clean prompt** (read from the values above):
+
+```
+To authorize:
+  1. Open this URL on any device with a browser:
+     <VERIFY_URL>
+  2. Or, visit https://api.wildwoodworks.io/device and enter:
+     <USER_CODE>
+
+Waiting for you to authorize (expires in ~<EXPIRES/60> minutes)…
+```
+
+3. **Poll the token endpoint** until status flips:
+
+```bash
+while true; do
+  sleep "$INTERVAL"
+  TOK=$(curl -fsS -X POST https://api.wildwoodworks.io/oauth/token \
+    -H "Content-Type: application/x-www-form-urlencoded" \
+    -d "grant_type=urn:ietf:params:oauth:grant-type:device_code&device_code=$DEVICE_CODE&client_id=$CLIENT_ID")
+
+  ERR=$(echo "$TOK" | jq -r '.error // empty')
+  case "$ERR" in
+    authorization_pending) continue ;;
+    slow_down)             INTERVAL=$((INTERVAL + 5)) ;;
+    expired_token)         echo "Code expired. Re-run /wildwood setup --device"; exit 1 ;;
+    access_denied)         echo "You denied authorization."; exit 1 ;;
+    "")                    break ;;  # success
+    *)                     echo "Unexpected error: $ERR"; exit 1 ;;
+  esac
+done
+
+ACCESS_TOKEN=$(echo "$TOK" | jq -r .access_token)
+REFRESH_TOKEN=$(echo "$TOK" | jq -r .refresh_token)
+```
+
+4. **What to do with the token:**
+   - **REST API calls:** `curl -H "Authorization: Bearer $ACCESS_TOKEN" https://api.wildwoodworks.io/api/apps`
+   - **MCP via Claude Code:** Not currently possible — file an upstream feature request at https://github.com/anthropics/claude-code/issues citing RFC 8628 support.
+
+Tell the user clearly: this device-flow path is a workaround that proves the OAuth chain is healthy, and lets them drive the REST API directly. It does **not** make MCP tools appear in Claude Code until Anthropic ships RFC 8628 client-side.
 
 ## Setup Step 4: Verify App Setup
 
