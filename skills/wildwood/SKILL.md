@@ -19,6 +19,7 @@ Parse the user's message (the text after `/wildwood`) to determine intent:
 | "database", "db", "provision database", "backup" | **Database Hosting** |
 | "status", "health", "check", "what's running" | **Status** |
 | "diagnose", "diagnostics", "MCP broken", "OAuth failing", "tools not appearing" | **Diagnose** |
+| "setup --troubleshoot", "setup with diagnostics" | **Setup** (then auto-fall-through to **Diagnose** if Step 3c doesn't succeed) |
 | "help", "what can you do", "docs", "reference" | **Show Menu** |
 | Anything about configuring AI, auth, payments, themes, tiers | **Integrate** (Step 5) |
 | Anything about MCP tools, snapshots, rollback | **Platform Reference** |
