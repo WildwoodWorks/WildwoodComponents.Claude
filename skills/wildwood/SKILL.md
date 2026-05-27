@@ -79,19 +79,14 @@ Explain what WildwoodAdmin provides:
 - Component configuration (auth, messaging, themes, disclaimers)
 - App hosting and deployment management
 
-## Setup Step 2b: Create Your First App (required before MCP)
+## Setup Step 2b: Create Your First App (optional before MCP — can also be done after)
 
-The MCP server connection requires an app — the OAuth token is scoped to a specific app, and the MCP feature gate checks whether that app has MCP enabled. **Users must create at least one app BEFORE connecting MCP.** (New apps have MCP enabled by default.)
+App creation can happen **either before or after** connecting MCP:
 
-> **Why can't we create the app via MCP?** Chicken-and-egg: the MCP tools aren't available until after authentication, and authentication requires an app to exist. App creation must happen in WildwoodAdmin first.
+- **Before MCP (via WildwoodAdmin):** Go to **https://admin.wildwoodworks.io** → **Apps** → **Create New App**. Enter a name and optionally a description. Note the generated **App ID**.
+- **After MCP (via Claude MCP tools):** Connect MCP first (Step 3), then create the app via the `wildwood_create_app` MCP tool in Step 4. This is the recommended path — it's faster and stays in the Claude Code terminal.
 
-Guide the user:
-
-1. Go to **https://admin.wildwoodworks.io**
-2. Navigate to **Apps** → **Create New App**
-3. Enter an app name and optionally a description
-4. Click **Create** — note the generated **App ID** (they'll need it later for SDK integration)
-5. The app is created with MCP enabled by default — no extra toggle needed
+MCP now works with company-only tokens, so users **don't need an app to exist before authenticating.** Company-level tools like `wildwood_create_app` and `wildwood_list_apps` are available immediately after OAuth completes.
 
 ## Setup Step 3: Connect via MCP
 
@@ -366,16 +361,37 @@ REFRESH_TOKEN=$(echo "$TOK" | jq -r .refresh_token)
 
 Tell the user clearly: this device-flow path is a workaround that proves the OAuth chain is healthy, and lets them drive the REST API directly. It does **not** make MCP tools appear in Claude Code until Anthropic ships RFC 8628 client-side.
 
-## Setup Step 4: Verify App Setup
+## Setup Step 4: Create or Select an App
 
-Once connected, check the user's app configuration:
+Once MCP is connected, check if the user already has apps. **MCP tools work even before an app exists** — the user's token carries their company context, which is enough for company-level tools like `wildwood_create_app` and `wildwood_list_apps`.
 
-1. Use `wildwood_list_apps` (MCP) or `GET /api/apps` (REST) to list existing apps
-2. If they have apps, show the list and ask which one they want to work with
-3. If they have no apps, help them create one:
-   - Ask for an app name and description
-   - Create via WildwoodAdmin or `wildwood_create_app` MCP tool
-   - Note the generated AppId
+1. Call `wildwood_list_apps` to list existing apps
+2. **If they have apps**: show the list and ask which one they want to work with
+3. **If they have no apps**: create one right now via MCP:
+
+```
+wildwood_create_app(name: "My App", description: "My first Wildwood app", confirm: true)
+```
+
+Note the generated **AppId** from the response — this is the identifier for SDK integration, API calls, and all configuration.
+
+### Store the selected app in memory
+
+After creating or selecting an app, **save it to Claude memory** for this project so subsequent conversations remember which app to use. Write a memory file:
+
+```
+Write a project memory file with:
+  name: wildwood-app
+  type: project
+  description: The Wildwood app this project is connected to
+  body: AppId = <the selected appId>, AppName = <the app name>
+```
+
+This way, future `/wildwood` invocations in this project will know which app the user is working with without re-asking.
+
+### If the user wants to switch apps later
+
+They can run `/wildwood setup` again and select a different app. The memory file gets updated to the new selection.
 
 ## Setup Step 5: Review Configuration
 
