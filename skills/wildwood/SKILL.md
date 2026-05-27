@@ -184,15 +184,24 @@ Tell the user:
 
 > **"Type `/mcp` in Claude Code, select wildwood from the list, and click Authenticate. A browser window will open to Wildwood — sign in and click Allow. That's the entire authentication step."**
 
+**Windows firewall note:** Before telling the user to authenticate, warn them:
+
+> **"When you click Authenticate, Windows may show a firewall prompt asking whether to allow Claude Code to listen on a network port. This is normal — Claude Code starts a temporary localhost listener to catch the OAuth callback (same as `az login`, `gh auth login`, and every other CLI OAuth flow). Click Allow — it's localhost-only, one-time, and doesn't open any external network access."**
+>
+> **"If you can't allow the firewall (corporate IT policy, restricted machine), click Cancel instead. The OAuth flow still works — your browser will redirect to a localhost page that shows 'This site can't be reached.' Copy the full URL from your browser's address bar (it contains the auth code even though the page didn't load) and paste it back here. I'll complete the authentication with that URL."**
+
 The `/mcp` menu flow:
 1. User types `/mcp`
 2. Selects **wildwood** from the server list
 3. Clicks **Authenticate** (or **Connect**)
-4. Browser opens automatically to Wildwood's login/consent page
-5. User signs in, clicks **Allow**
-6. Browser redirects to `http://localhost:<port>/callback` — page may show "can't load" which is fine
-7. Claude Code catches the callback, stores tokens
-8. The wildwood MCP tools appear (e.g., `wildwood_get_app_info`)
+4. *(Windows only)* Firewall prompt may appear — click **Allow** (or Cancel + copy-paste fallback above)
+5. Browser opens automatically to Wildwood's login/consent page
+6. User signs in, clicks **Allow**
+7. Browser redirects to `http://localhost:<port>/callback` — page may show "can't load" which is fine
+8. Claude Code catches the callback, stores tokens
+9. The wildwood MCP tools appear (e.g., `wildwood_get_app_info`)
+
+**If the user denied the firewall and pasted a callback URL:** call `mcp__wildwood__complete_authentication` with the URL they pasted (it contains the `code` and `state` parameters Claude Code needs to exchange for tokens). If that shim tool isn't available, the auth code has expired — have them retry from step 1.
 
 **Alternative: calling a tool directly.** If the user prefers, just call `wildwood_get_app_info` and Claude Code will detect the 401 and trigger the same OAuth flow. Some Claude Code builds show `authenticate` / `complete_authentication` shim tools first — if those appear, tell the user to run `/mcp` instead for the smoother browser flow.
 

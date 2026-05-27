@@ -24,7 +24,9 @@ Wait for the success message (something like *"Successfully added marketplace: w
 /plugin install wildwood@wildwood
 ```
 
-That's it. The plugin auto-registers the Wildwood MCP server. The first time you call a Wildwood tool, your browser opens to Wildwood for one-click OAuth — no `/mcp` step required, no token copying, no env vars.
+That's it. The plugin auto-registers the Wildwood MCP server. Run `/mcp` → select wildwood → click Authenticate — your browser opens for one-click OAuth.
+
+> **Windows firewall:** When you click Authenticate, Windows may ask whether to allow Claude Code to listen on a network port. Click **Allow** — this is a temporary localhost-only listener to catch the OAuth callback (same as `az login`, `gh auth login`, etc.). One-time prompt, no external network access. If you **can't** allow it (corporate IT), click Cancel — your browser will still redirect but show "site can't be reached." Copy the full URL from the address bar and paste it back in Claude Code when prompted.
 
 > **What just happened?** Claude Code's native plugin system loaded the plugin, registered the Wildwood MCP server bundled in [`.mcp.json`](.mcp.json), and made the `/wildwood` slash command available. When you first invoke a Wildwood MCP tool, the server responds with a 401 + `WWW-Authenticate` header pointing at its OAuth discovery URL. Claude Code reads that, opens your browser, you click **Allow**, and you're done.
 
