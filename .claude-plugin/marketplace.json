@@ -8,10 +8,7 @@
     {
       "name": "wildwood",
       "source": "./",
-      "description": "Build apps on the Wildwood platform — authentication, AI chat, messaging, payments, and hosting. Includes the /wildwood slash command and the Wildwood MCP server (auto-registered, OAuth on first use).",
-      "homepage": "https://admin.wildwoodworks.io",
-      "category": "Platform",
-      "tags": ["mcp", "oauth", "authentication", "ai", "payments", "hosting"]
+      "description": "Build apps on the Wildwood platform — authentication, AI chat, messaging, payments, and hosting. Includes the /wildwood slash command and the Wildwood MCP server (auto-registered, OAuth on first use)."
     }
   ]
 }
