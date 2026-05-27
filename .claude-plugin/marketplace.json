@@ -8,8 +8,9 @@
     {
       "name": "wildwood",
       "source": {
-        "source": "github",
-        "repo": "WildwoodWorks/WildwoodComponents.Claude"
+        "source": "url",
+        "url": "https://github.com/WildwoodWorks/WildwoodComponents.Claude.git",
+        "sha": "58c9503c67025302bf209ebdb5e86cd2a2f84cc6"
       },
       "description": "Build apps on the Wildwood platform — authentication, AI chat, messaging, payments, and hosting. Includes the /wildwood slash command and the Wildwood MCP server (auto-registered, OAuth on first use)."
     }
