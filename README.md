@@ -4,59 +4,53 @@ A Claude Code plugin that connects Claude to the **Wildwood platform** — givin
 
 ## Installation
 
-### One-liner (recommended)
+**Two slash commands inside Claude Code. No shell installer. No restart.**
 
-**macOS / Linux:**
-```bash
-curl -fsSL https://raw.githubusercontent.com/WildwoodWorks/WildwoodComponents.Claude/master/install.sh | bash
+```
+/plugin marketplace add WildwoodWorks/WildwoodComponents.Claude
+/plugin install wildwood@wildwood
 ```
 
-**Windows (PowerShell):**
-```powershell
-irm https://raw.githubusercontent.com/WildwoodWorks/WildwoodComponents.Claude/master/install.ps1 | iex
+That's it. The plugin auto-registers the Wildwood MCP server. The first time you call a Wildwood tool, your browser opens to Wildwood for one-click OAuth — no `/mcp` step required, no token copying, no env vars.
+
+> **What just happened?** Claude Code's native plugin system loaded the plugin, registered the Wildwood MCP server bundled in [`.mcp.json`](.mcp.json), and made the `/wildwood` slash command available. When you first invoke a Wildwood MCP tool, the server responds with a 401 + `WWW-Authenticate` header pointing at its OAuth discovery URL. Claude Code reads that, opens your browser, you click **Allow**, and you're done.
+
+### Updates
+
+Plugin auto-updates from the marketplace. To pull a new version manually:
+
+```
+/plugin marketplace update wildwood
 ```
 
-This installs skills, MCP server config, and platform context into your current project directory.
+### Uninstall
 
-### From a cloned repo
-
-```bash
-git clone https://github.com/WildwoodWorks/WildwoodComponents.Claude.git
-cd WildwoodComponents.Claude
-
-# Install into current project
-./install.sh /path/to/your/project       # macOS/Linux
-.\install.ps1 -ProjectDir C:\your\project # Windows
 ```
-
-### MCP server only
-
-If you just want the MCP tools without the skills:
-```bash
-claude mcp add --transport http wildwood https://api.wildwoodworks.io/mcp
+/plugin uninstall wildwood@wildwood
 ```
 
 ## What You Get
 
-### `/wildwood` Command
+### The `/wildwood` slash command
 
 One command does everything — just tell it what you need:
 
 ```
 /wildwood              → show menu
-/wildwood setup        → create account, connect MCP
-/wildwood integrate    → add SDK to your project
+/wildwood setup        → create account, connect MCP, configure your first app
+/wildwood integrate    → add the Wildwood SDK to your project
 /wildwood deploy       → build and deploy your app
 /wildwood hosting      → manage Wildwood-hosted deployments
 /wildwood database     → manage hosted Azure SQL databases
 /wildwood status       → check platform health and app status
+/wildwood diagnose     → troubleshoot MCP connection / OAuth issues
 ```
 
-### MCP Server Connection
+### Wildwood MCP server
 
-Connects Claude to the Wildwood API at `api.wildwoodworks.io/mcp` via OAuth 2.1. On first use, a browser window opens for authentication at [WildwoodAdmin](https://admin.wildwoodworks.io).
+Connects Claude to the Wildwood API at `api.wildwoodworks.io/mcp` via OAuth 2.1 with PKCE. Supports the native authorization-code flow (RFC 6749), client-id metadata documents (CIMD), resource indicators (RFC 8707), and the device authorization grant (RFC 8628) for headless environments.
 
-Once connected, Claude can query and manage your Wildwood apps directly using 46 MCP tools (20 read, 26 write).
+Once connected, Claude can query and manage your Wildwood apps directly using 46+ MCP tools (read + write).
 
 ## WildwoodComponents
 
@@ -84,12 +78,19 @@ The core value of the Wildwood platform is **pre-built, production-ready UI comp
 | Node.js | `@wildwood/node` | [Wildwood.JS](https://github.com/WildwoodWorks/Wildwood.JS) |
 | Blazor/.NET | `WildwoodComponents.Blazor` | [WildwoodComponents](https://github.com/WildwoodWorks/WildwoodComponents) |
 
-## Quick Start
+## Headless install (CI / containers / no Claude Code session)
 
-1. Run the install script (see Installation above)
-2. Restart Claude Code
-3. Run `/mcp` in Claude Code — a browser will open for you to log in with your Wildwood account
-4. Run `/wildwood` to get started
+If you can't use the `/plugin` UI (e.g., installing inside a Docker image), drop the contents of this repo into your project's `.claude/plugins/wildwood/` directory — the plugin's bundled `.mcp.json` and `skills/` will be picked up on next launch. Note that OAuth still requires a one-time browser session; for fully headless environments, use the device-flow path documented in [`skills/wildwood/SKILL.md`](skills/wildwood/SKILL.md) (`/wildwood setup --device`).
+
+## Troubleshooting
+
+If `/wildwood` tools don't appear after install:
+
+```
+/wildwood diagnose
+```
+
+This runs five conformance checks against the Wildwood OAuth surface and tells you exactly which side has the bug. Or check the [SKILL.md OAuth Diagnostics section](skills/wildwood/SKILL.md) directly.
 
 ## Links
 

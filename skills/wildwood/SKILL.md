@@ -80,46 +80,51 @@ Explain what WildwoodAdmin provides:
 
 ## Setup Step 3: Connect via MCP
 
-Wildwood uses the native Claude Code MCP OAuth flow. The user clicks "Allow" once in a browser and Claude Code handles registration, PKCE, the localhost callback, and refresh-token persistence end to end. The shim flow (`mcp__wildwood__authenticate` / `mcp__wildwood__complete_authentication`) only exists as a last-resort fallback — **do not lead with it.**
+Installing this plugin **already registered** the Wildwood MCP server via the bundled `.mcp.json`. The first time you call a Wildwood MCP tool, Claude Code's native OAuth flow fires automatically: a browser window opens to Wildwood, the user clicks **Allow** once, and Claude Code catches the localhost callback. No `/mcp` command, no restart, no token copying.
 
 ### 3a: Check if MCP tools are already available
 
-Try calling `wildwood_get_app_info` via MCP. If it works, the user is already connected — skip to Setup Step 4.
+Try calling `wildwood_get_app_info` via MCP. If it works, the user is already authenticated — skip to Setup Step 4.
 
-If the user typed `/wildwood setup --device` (or you've detected a headless environment via **Diagnose Step 1**), skip ahead to **Setup Step 3 — Device Flow Fallback** below.
+If the user typed `/wildwood setup --device` (or you've detected a headless environment via **Diagnose Step 1**), skip ahead to **Setup Step 3e — Device Flow Fallback** below.
 
-### 3b: If MCP tools are NOT available, register the server
+### 3b: If the plugin isn't loaded yet
 
-Run via Bash to register the Wildwood MCP server:
+If `wildwood_get_app_info` returns "not found" or "no such tool", the plugin needs to be installed. Tell the user:
+
+```
+/plugin marketplace add WildwoodWorks/WildwoodComponents.Claude
+/plugin install wildwood@wildwood
+```
+
+(Two slash commands inside Claude Code. No shell installer. No restart.)
+
+If the plugin marketplace command isn't recognized, the user is on an older Claude Code build that pre-dates the native plugin system. Fall back to the manual MCP registration:
 
 ```bash
-npx @anthropic-ai/claude-code mcp add --transport http wildwood https://api.wildwoodworks.io/mcp
+claude mcp add --transport http --scope user wildwood https://api.wildwoodworks.io/mcp
 ```
 
-If `claude` is on PATH, use `claude mcp add --transport http wildwood https://api.wildwoodworks.io/mcp` instead. On Windows (non-WSL), use `claude.exe`.
+Then have them restart Claude Code.
 
-After registering, tell the user upfront: **"After we restart, a browser window should open for Wildwood login. Click Allow and you're done — no URL copying. If the browser doesn't open, let me know and I'll run a diagnostic."**
+### 3c: Trigger OAuth (the very first tool call does it)
 
-Then have them restart Claude Code (or close and reopen VS Code if using the extension).
+Once the plugin is loaded, just call any Wildwood MCP tool — the simplest being `wildwood_get_app_info`. Tell the user upfront:
 
-### 3c: After restart — trigger the native OAuth flow
+> **"I'm about to call a Wildwood tool. A browser window will open to log into Wildwood. Click Allow, then come back — that's the entire authentication step."**
 
-Inside Claude Code, the native command is:
+Then call the tool. Claude Code:
+1. Sends the request to `/mcp` with no token
+2. Receives 401 + `WWW-Authenticate: Bearer realm="mcp", resource_metadata="..."`
+3. Walks the OAuth discovery chain automatically
+4. Opens the user's browser to Wildwood
+5. Catches the localhost callback after the user clicks Allow
+6. Stores tokens in its internal credential store
+7. Retries the tool call with the bearer token
 
-```
-/mcp
-```
+If the call succeeds on the retry, you're done — skip to Setup Step 4.
 
-This opens the MCP server menu. Tell the user to:
-1. Select **wildwood**
-2. Choose **Connect** / **Authenticate** (label depends on Claude Code version)
-3. A browser window will open to Wildwood
-4. Sign in, click **Allow**
-5. Browser auto-redirects to a `http://localhost:...` page that may say "page can't be loaded" — that's fine, Claude Code already caught the callback
-
-After the browser closes (or shows the localhost page), try `wildwood_get_app_info` again. If it works, you're done — skip to Setup Step 4.
-
-If it still doesn't work, check whether OAuth completed silently or stalled:
+If it fails, check the auth cache:
 
 ```bash
 cat ~/.claude/mcp-needs-auth-cache.json 2>/dev/null
