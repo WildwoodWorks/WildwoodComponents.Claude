@@ -90,27 +90,68 @@ If the user typed `/wildwood setup --device` (or you've detected a headless envi
 
 ### 3b: If the plugin isn't loaded yet
 
-If `wildwood_get_app_info` returns "not found" or "no such tool", the plugin needs to be installed. **Claude (you) cannot run slash commands programmatically** — there is no tool that invokes `/plugin marketplace add` for the user. Print the two commands as **separate inputs** and explicitly tell the user to submit each one on its own line.
+If `wildwood_get_app_info` returns "not found" or "no such tool", the plugin needs to be installed. **Claude (you) cannot run slash commands programmatically** — there is no tool that invokes `/plugin marketplace add` for the user. Print the commands as **separate inputs** and explicitly tell the user to submit each one on its own line.
 
-> **Critical**: emphasize they MUST run the two commands as separate submissions, not paste both lines together. Claude Code parses one slash command per input. If both lines are pasted at once, the second line is interpreted as a positional argument to the first — the marketplace name becomes `WildwoodWorks/WildwoodComponents.Claude \plugin install wildwood@wildwood`, and `git clone` rejects the resulting path with `Invalid argument`. This is the most common install failure for this plugin.
+> **Critical**: emphasize that each `/plugin` command MUST be submitted as a separate Claude Code input, not pasted together. Claude Code parses one slash command per input. If multiple lines are pasted at once, subsequent lines become positional arguments to the first command — the marketplace name becomes `WildwoodWorks/WildwoodComponents.Claude \plugin install wildwood@wildwood`, and `git clone` rejects the resulting path with `Invalid argument`. This is the most common install failure.
 
-**Step 1 (run first, wait for success):**
+**Pick the right path based on whether the user already has the marketplace installed.** The simplest way to know: just have them try Path A. If it errors with "already installed", switch to Path B.
+
+#### Path A — Fresh install (most common)
+
+**A1 (wait for success before A2):**
 
 ```
 /plugin marketplace add WildwoodWorks/WildwoodComponents.Claude
 ```
 
-Expected output: a success message confirming the marketplace was added.
+Expected: `Successfully added marketplace: wildwood`.
 
-**Step 2 (run only after Step 1 prints success):**
+**A2 (only after A1 succeeds):**
 
 ```
 /plugin install wildwood@wildwood
 ```
 
-If the user reports that Step 1 failed with `Invalid argument` and `git clone ... \plugin install wildwood@wildwood`, they pasted both lines together. Tell them to:
-  1. Clean up the partial directory: `rm -rf ~/.claude/plugins/marketplaces/WildwoodWorks-WildwoodComponents.Claude*` (in Bash) or the equivalent PowerShell.
-  2. Retry the two steps **one at a time**.
+Done. Skip to Setup Step 3c (trigger OAuth).
+
+#### Path B — Already have the marketplace (use this if A1 errored)
+
+If A1 returned `Marketplace 'wildwood' is already installed`, the user has an older version. **Don't try to re-add it** — refresh it instead:
+
+**B1 — refresh the marketplace from GitHub:**
+
+```
+/plugin marketplace update wildwood
+```
+
+**B2 — if the plugin was previously installed, uninstall the old version:**
+
+```
+/plugin uninstall wildwood@wildwood
+```
+
+Skip B2 if the previous install attempt failed (i.e., the user added the marketplace but `/plugin install` errored). If the user isn't sure, running B2 is safe — it'll error harmlessly with "not installed" if there's nothing to uninstall.
+
+**B3 — install:**
+
+```
+/plugin install wildwood@wildwood
+```
+
+#### Recovery — if things get stuck
+
+Two specific failure recoveries:
+
+- **"Invalid argument" with `\plugin install` in the git path** → the user pasted multiple commands together. Run `rm -rf ~/.claude/plugins/marketplaces/WildwoodWorks-WildwoodComponents.Claude*` (Bash) or the PowerShell equivalent, then start over with **Path A**, one command at a time.
+- **`/plugin install` returns `Invalid schema: plugins.N.source: Invalid input`** → the marketplace cache is stale and contains an old version of the manifest that pre-dates the github-object source form. Run `/plugin marketplace update wildwood` to refresh, then retry the install (Path B from B3).
+- **Anything else stuck** → tell the user to do a full reset:
+  ```
+  /plugin uninstall wildwood@wildwood
+  ```
+  ```
+  /plugin marketplace remove wildwood
+  ```
+  Then Path A from A1.
 
 If the plugin marketplace command isn't recognized, the user is on an older Claude Code build that pre-dates the native plugin system. Fall back to the manual MCP registration:
 

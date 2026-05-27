@@ -8,13 +8,15 @@ A Claude Code plugin that connects Claude to the **Wildwood platform** — givin
 
 > ⚠️ **Run each command separately — don't paste both lines at once.** Claude Code parses slash commands one input at a time. If you submit both lines together, the second command gets concatenated into the first command's arguments and the install fails with `Invalid argument`.
 
+### Fresh install
+
 **Step 1 — add the marketplace:**
 
 ```
 /plugin marketplace add WildwoodWorks/WildwoodComponents.Claude
 ```
 
-Wait for the success message (something like *"Marketplace added"*).
+Wait for the success message (something like *"Successfully added marketplace: wildwood"*).
 
 **Step 2 — install the plugin (only after Step 1 succeeds):**
 
@@ -26,19 +28,43 @@ That's it. The plugin auto-registers the Wildwood MCP server. The first time you
 
 > **What just happened?** Claude Code's native plugin system loaded the plugin, registered the Wildwood MCP server bundled in [`.mcp.json`](.mcp.json), and made the `/wildwood` slash command available. When you first invoke a Wildwood MCP tool, the server responds with a 401 + `WWW-Authenticate` header pointing at its OAuth discovery URL. Claude Code reads that, opens your browser, you click **Allow**, and you're done.
 
-### Updates
+### Already installed? Use the update path
 
-Plugin auto-updates from the marketplace. To pull a new version manually:
+If Step 1 errors with `Marketplace 'wildwood' is already installed`, you already have an older version. **Don't re-add it — update it instead:**
+
+**Step 1 — refresh the marketplace from GitHub:**
 
 ```
 /plugin marketplace update wildwood
 ```
 
-### Uninstall
+**Step 2 — if the plugin was previously installed successfully, uninstall it first:**
 
 ```
 /plugin uninstall wildwood@wildwood
 ```
+
+(Skip this step if your previous `/plugin install` attempt failed — only the marketplace was added in that case, not the plugin.)
+
+**Step 3 — install:**
+
+```
+/plugin install wildwood@wildwood
+```
+
+### Complete reset
+
+If anything gets stuck and the update path doesn't work, fully remove both and start over:
+
+```
+/plugin uninstall wildwood@wildwood
+```
+
+```
+/plugin marketplace remove wildwood
+```
+
+Then the **Fresh install** Steps 1 and 2 will work cleanly.
 
 ## What You Get
 
