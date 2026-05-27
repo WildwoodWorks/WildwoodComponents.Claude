@@ -90,14 +90,27 @@ If the user typed `/wildwood setup --device` (or you've detected a headless envi
 
 ### 3b: If the plugin isn't loaded yet
 
-If `wildwood_get_app_info` returns "not found" or "no such tool", the plugin needs to be installed. **Claude (you) cannot run slash commands programmatically** — there is no tool that invokes `/plugin marketplace add` for the user. Print the two commands clearly and ask the user to copy-paste them into Claude Code's input:
+If `wildwood_get_app_info` returns "not found" or "no such tool", the plugin needs to be installed. **Claude (you) cannot run slash commands programmatically** — there is no tool that invokes `/plugin marketplace add` for the user. Print the two commands as **separate inputs** and explicitly tell the user to submit each one on its own line.
+
+> **Critical**: emphasize they MUST run the two commands as separate submissions, not paste both lines together. Claude Code parses one slash command per input. If both lines are pasted at once, the second line is interpreted as a positional argument to the first — the marketplace name becomes `WildwoodWorks/WildwoodComponents.Claude \plugin install wildwood@wildwood`, and `git clone` rejects the resulting path with `Invalid argument`. This is the most common install failure for this plugin.
+
+**Step 1 (run first, wait for success):**
 
 ```
 /plugin marketplace add WildwoodWorks/WildwoodComponents.Claude
+```
+
+Expected output: a success message confirming the marketplace was added.
+
+**Step 2 (run only after Step 1 prints success):**
+
+```
 /plugin install wildwood@wildwood
 ```
 
-(Two slash commands inside Claude Code. No shell installer. No restart.)
+If the user reports that Step 1 failed with `Invalid argument` and `git clone ... \plugin install wildwood@wildwood`, they pasted both lines together. Tell them to:
+  1. Clean up the partial directory: `rm -rf ~/.claude/plugins/marketplaces/WildwoodWorks-WildwoodComponents.Claude*` (in Bash) or the equivalent PowerShell.
+  2. Retry the two steps **one at a time**.
 
 If the plugin marketplace command isn't recognized, the user is on an older Claude Code build that pre-dates the native plugin system. Fall back to the manual MCP registration:
 

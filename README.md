@@ -6,8 +6,19 @@ A Claude Code plugin that connects Claude to the **Wildwood platform** — givin
 
 **Two slash commands inside Claude Code. No shell installer. No restart.**
 
+> ⚠️ **Run each command separately — don't paste both lines at once.** Claude Code parses slash commands one input at a time. If you submit both lines together, the second command gets concatenated into the first command's arguments and the install fails with `Invalid argument`.
+
+**Step 1 — add the marketplace:**
+
 ```
 /plugin marketplace add WildwoodWorks/WildwoodComponents.Claude
+```
+
+Wait for the success message (something like *"Marketplace added"*).
+
+**Step 2 — install the plugin (only after Step 1 succeeds):**
+
+```
 /plugin install wildwood@wildwood
 ```
 
