@@ -66,6 +66,16 @@ If anything gets stuck and the update path doesn't work, fully remove both and s
 
 Then the **Fresh install** Steps 1 and 2 will work cleanly.
 
+### VS Code extension (no `/plugin` command)
+
+The `/plugin` command is available in the **Claude Code CLI** but **not** in the VS Code extension. If you see `/plugin isn't available in this environment`, register the MCP server directly from any terminal instead:
+
+```bash
+claude mcp add --transport http wildwood https://api.wildwoodworks.io/mcp
+```
+
+Then **restart Claude Code** (close and reopen VS Code). On the next session, the wildwood MCP server will connect, trigger OAuth in your browser, and make the `wildwood_*` tools available. The `/wildwood` slash command works in VS Code if the plugin's skill file is in `.claude/commands/wildwood.md` (the old shell installer placed it there; if you don't have it, clone this repo and copy `skills/wildwood/SKILL.md` to `.claude/commands/wildwood.md` in your project).
+
 ## What You Get
 
 ### The `/wildwood` slash command
