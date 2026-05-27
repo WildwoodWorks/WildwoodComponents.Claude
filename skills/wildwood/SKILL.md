@@ -53,12 +53,13 @@ Docs: https://admin.wildwoodworks.io/docs
 
 Guide the user through creating a Wildwood account and connecting to the platform.
 
-## Setup Step 1: Check for Existing Account
+## Setup Step 1: Check for Existing Account + App
 
-Ask the user if they already have a Wildwood account.
+Ask the user if they already have a Wildwood account AND an app created.
 
-- **If yes**: Skip to Setup Step 3
-- **If no**: Continue to Setup Step 2
+- **If yes to both** (they have an account and at least one app): Skip to Setup Step 3
+- **If yes to account but no app**: Skip to Setup Step 2b (create app)
+- **If no account**: Continue to Setup Step 2
 
 ## Setup Step 2: Create Account
 
@@ -77,6 +78,20 @@ Explain what WildwoodAdmin provides:
 - Analytics and audit logs
 - Component configuration (auth, messaging, themes, disclaimers)
 - App hosting and deployment management
+
+## Setup Step 2b: Create Your First App (required before MCP)
+
+The MCP server connection requires an app — the OAuth token is scoped to a specific app, and the MCP feature gate checks whether that app has MCP enabled. **Users must create at least one app BEFORE connecting MCP.** (New apps have MCP enabled by default.)
+
+> **Why can't we create the app via MCP?** Chicken-and-egg: the MCP tools aren't available until after authentication, and authentication requires an app to exist. App creation must happen in WildwoodAdmin first.
+
+Guide the user:
+
+1. Go to **https://admin.wildwoodworks.io**
+2. Navigate to **Apps** → **Create New App**
+3. Enter an app name and optionally a description
+4. Click **Create** — note the generated **App ID** (they'll need it later for SDK integration)
+5. The app is created with MCP enabled by default — no extra toggle needed
 
 ## Setup Step 3: Connect via MCP
 
@@ -161,22 +176,27 @@ claude mcp add --transport http --scope user wildwood https://api.wildwoodworks.
 
 Then have them restart Claude Code.
 
-### 3c: Trigger OAuth (the very first tool call does it)
+### 3c: Trigger OAuth via `/mcp` (recommended) or first tool call
 
-Once the plugin is loaded, just call any Wildwood MCP tool — the simplest being `wildwood_get_app_info`. Tell the user upfront:
+The **recommended** way to authenticate is via the Claude Code `/mcp` menu. This triggers the browser-based OAuth flow reliably:
 
-> **"I'm about to call a Wildwood tool. A browser window will open to log into Wildwood. Click Allow, then come back — that's the entire authentication step."**
+Tell the user:
 
-Then call the tool. Claude Code:
-1. Sends the request to `/mcp` with no token
-2. Receives 401 + `WWW-Authenticate: Bearer realm="mcp", resource_metadata="..."`
-3. Walks the OAuth discovery chain automatically
-4. Opens the user's browser to Wildwood
-5. Catches the localhost callback after the user clicks Allow
-6. Stores tokens in its internal credential store
-7. Retries the tool call with the bearer token
+> **"Type `/mcp` in Claude Code, select wildwood from the list, and click Authenticate. A browser window will open to Wildwood — sign in and click Allow. That's the entire authentication step."**
 
-If the call succeeds on the retry, you're done — skip to Setup Step 4.
+The `/mcp` menu flow:
+1. User types `/mcp`
+2. Selects **wildwood** from the server list
+3. Clicks **Authenticate** (or **Connect**)
+4. Browser opens automatically to Wildwood's login/consent page
+5. User signs in, clicks **Allow**
+6. Browser redirects to `http://localhost:<port>/callback` — page may show "can't load" which is fine
+7. Claude Code catches the callback, stores tokens
+8. The wildwood MCP tools appear (e.g., `wildwood_get_app_info`)
+
+**Alternative: calling a tool directly.** If the user prefers, just call `wildwood_get_app_info` and Claude Code will detect the 401 and trigger the same OAuth flow. Some Claude Code builds show `authenticate` / `complete_authentication` shim tools first — if those appear, tell the user to run `/mcp` instead for the smoother browser flow.
+
+After authentication, try `wildwood_get_app_info`. If it returns app data, you're done — skip to Setup Step 4.
 
 If it fails, check the auth cache:
 
