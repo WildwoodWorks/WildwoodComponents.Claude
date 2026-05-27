@@ -90,7 +90,7 @@ If the user typed `/wildwood setup --device` (or you've detected a headless envi
 
 ### 3b: If the plugin isn't loaded yet
 
-If `wildwood_get_app_info` returns "not found" or "no such tool", the plugin needs to be installed. Tell the user:
+If `wildwood_get_app_info` returns "not found" or "no such tool", the plugin needs to be installed. **Claude (you) cannot run slash commands programmatically** — there is no tool that invokes `/plugin marketplace add` for the user. Print the two commands clearly and ask the user to copy-paste them into Claude Code's input:
 
 ```
 /plugin marketplace add WildwoodWorks/WildwoodComponents.Claude
