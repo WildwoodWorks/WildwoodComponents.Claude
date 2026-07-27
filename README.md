@@ -99,7 +99,7 @@ One command does everything — just tell it what you need:
 
 Connects Claude to the Wildwood API at `api.wildwoodworks.io/mcp` via OAuth 2.1 with PKCE. Supports the native authorization-code flow (RFC 6749), client-id metadata documents (CIMD), resource indicators (RFC 8707), and the device authorization grant (RFC 8628) for headless environments.
 
-Once connected, Claude can query and manage your Wildwood apps directly using 46+ MCP tools (read + write).
+Once connected, Claude can query and manage your Wildwood apps directly using 95 MCP tools (43 read, 52 write).
 
 ## WildwoodComponents
 
@@ -107,25 +107,32 @@ The core value of the Wildwood platform is **pre-built, production-ready UI comp
 
 | Component | What It Provides | Platforms |
 |-----------|-----------------|-----------|
-| **Authentication** | Login/register UI with social providers, passkeys, 2FA | React, React Native, Blazor |
-| **AI Chat** | Streaming AI chat with session management and TTS | React, React Native, Blazor |
+| **Authentication** | Login/register UI with social providers, passkeys, 2FA | React, React Native, Blazor, Swift |
+| **AI Chat** | Streaming AI chat with session management and TTS | React, React Native, Blazor, Swift |
 | **AI Proxy** | Server-side AI API proxy (no client-side keys) | Node.js |
-| **App Tiers** | Subscription tiers, feature gating, pricing | React, React Native, Blazor |
-| **Messaging** | Real-time messaging with threads, reactions | React, React Native, Blazor |
-| **Payments** | Stripe payment forms and subscriptions | React, Blazor |
-| **Theme** | Light/dark mode, CSS variables | React, React Native, Blazor |
-| **Disclaimers** | Terms acceptance with consent tracking | React, React Native, Blazor |
-| **Notifications** | Toast notifications and alerts | React, React Native, Blazor |
+| **AI Flows** | Streamed LangGraph flow runs with interrupts + scheduled subscriptions | React, React Native, Blazor, Swift |
+| **Documents** | Tenant document upload/parse/text/download | React, React Native, Blazor, Swift |
+| **App Tiers** | Subscription tiers, feature gating, pricing | React, React Native, Blazor, Swift |
+| **Feature Gate** | Cached entitlement gate over user features | React, React Native, Blazor, Swift |
+| **Messaging** | Real-time messaging with threads, reactions | React, React Native, Blazor, Swift |
+| **Payments** | Stripe payment forms and subscriptions (StoreKit 2 on iOS) | React, Blazor, Swift |
+| **Theme** | Light/dark mode, CSS variables | React, React Native, Blazor, Swift |
+| **Disclaimers** | Terms acceptance with consent tracking | React, React Native, Blazor, Swift |
+| **Consent** | Cookie-consent banner + third-party script gating | React, React Native, Blazor, Swift |
+| **Notifications** | Toasts, in-app inbox, delivery preferences, web push | React, React Native, Blazor, Swift |
+| **Feedback** | In-app feedback widget with analytics | React, React Native, Blazor, Swift |
+| **Seeder** | Idempotent server-side app-data seeding | Node.js, .NET |
 
 ## SDK Packages
 
 | Platform | Package | Source |
 |----------|---------|--------|
-| Core (required) | `@wildwood/core` | [Wildwood.JS](https://github.com/WildwoodWorks/Wildwood.JS) |
-| React | `@wildwood/react` | [Wildwood.JS](https://github.com/WildwoodWorks/Wildwood.JS) |
-| React Native | `@wildwood/react-native` | [Wildwood.JS](https://github.com/WildwoodWorks/Wildwood.JS) |
-| Node.js | `@wildwood/node` | [Wildwood.JS](https://github.com/WildwoodWorks/Wildwood.JS) |
-| Blazor/.NET | `WildwoodComponents.Blazor` | [WildwoodComponents](https://github.com/WildwoodWorks/WildwoodComponents) |
+| Core (required for JS) | `@wildwood/core` | [WildwoodComponents.JS](https://github.com/WildwoodWorks/WildwoodComponents.JS) |
+| React | `@wildwood/react` | [WildwoodComponents.JS](https://github.com/WildwoodWorks/WildwoodComponents.JS) |
+| React Native | `@wildwood/react-native` | [WildwoodComponents.JS](https://github.com/WildwoodWorks/WildwoodComponents.JS) |
+| Node.js | `@wildwood/node` | [WildwoodComponents.JS](https://github.com/WildwoodWorks/WildwoodComponents.JS) |
+| Blazor/.NET | `WildwoodComponents.Blazor` | [WildwoodComponents.Net](https://github.com/WildwoodWorks/WildwoodComponents.Net) |
+| Swift/iOS | `WildwoodCore` + `WildwoodSwiftUI` (SPM) | [WildwoodComponents.Swift](https://github.com/WildwoodWorks/WildwoodComponents.Swift) |
 
 ## Headless install (CI / containers / no Claude Code session)
 

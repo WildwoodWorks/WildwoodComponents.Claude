@@ -2,7 +2,7 @@
 
 ## What This Plugin Does
 
-This plugin connects Claude Code to the **Wildwood platform**, giving you tools and skills to build apps with pre-built, production-ready components for authentication, AI chat, messaging, payments, and more.
+This plugin connects Claude Code to the **Wildwood platform**, giving you tools and skills to build apps with pre-built, production-ready components for authentication, AI chat, AI flows, documents, messaging, payments, and more.
 
 ## Core Principle
 
@@ -26,35 +26,43 @@ Just tell it what you need — setup, integrate, deploy, hosting, database, or s
 
 ## MCP Server Connection
 
-This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io/mcp`. On first connection, a browser window opens for OAuth login at WildwoodAdmin. After authentication, Claude can use 76 MCP tools (33 read, 43 write) to query and fully configure Wildwood apps — including AI providers, auth, payments, themes, CAPTCHA, tiers, add-ons, subscriptions, app hosting, and database hosting. All write tools require `confirm: true` and auto-snapshot before changes. Run `/wildwood` for the full tool reference and all platform workflows.
+This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io/mcp`. On first connection, a browser window opens for OAuth login at WildwoodAdmin. After authentication, Claude can use 95 MCP tools (43 read, 52 write) to query and fully configure Wildwood apps — including AI providers, auth, payments, themes, CAPTCHA, tiers, add-ons, subscriptions, feedback, consent, third-party scripts, the seeder, app hosting, and database hosting. All write tools require `confirm: true` and auto-snapshot before changes. Run `/wildwood` for the full tool reference and all platform workflows.
 
 ## SDK Packages
 
 | Platform | Package | Repository |
 |----------|---------|------------|
-| Core (required) | `@wildwood/core` | [Wildwood.JS](https://github.com/WildwoodWorks/Wildwood.JS) |
-| React | `@wildwood/react` | [Wildwood.JS](https://github.com/WildwoodWorks/Wildwood.JS) |
-| React Native | `@wildwood/react-native` | [Wildwood.JS](https://github.com/WildwoodWorks/Wildwood.JS) |
-| Node.js | `@wildwood/node` | [Wildwood.JS](https://github.com/WildwoodWorks/Wildwood.JS) |
-| Blazor/.NET | `WildwoodComponents.Blazor` | [WildwoodComponents](https://github.com/WildwoodWorks/WildwoodComponents) |
+| Core (required for JS) | `@wildwood/core` | [WildwoodComponents.JS](https://github.com/WildwoodWorks/WildwoodComponents.JS) |
+| React | `@wildwood/react` | [WildwoodComponents.JS](https://github.com/WildwoodWorks/WildwoodComponents.JS) |
+| React Native | `@wildwood/react-native` | [WildwoodComponents.JS](https://github.com/WildwoodWorks/WildwoodComponents.JS) |
+| Node.js | `@wildwood/node` | [WildwoodComponents.JS](https://github.com/WildwoodWorks/WildwoodComponents.JS) |
+| Blazor/.NET | `WildwoodComponents.Blazor` (+ `WildwoodComponents.Razor` for MVC) | [WildwoodComponents.Net](https://github.com/WildwoodWorks/WildwoodComponents.Net) |
+| Swift/iOS | `WildwoodCore` + `WildwoodSwiftUI` (SPM, iOS 26+) | [WildwoodComponents.Swift](https://github.com/WildwoodWorks/WildwoodComponents.Swift) |
 
 ## Available Components
 
 | Component | What It Provides | Platforms |
 |-----------|-----------------|-----------|
-| Authentication | Complete login/register UI with social providers, passkeys, 2FA | React, RN, Blazor |
-| AI Chat | Streaming AI chat interface with session management and TTS | React, RN, Blazor |
+| Authentication | Complete login/register UI with social providers, passkeys, 2FA | React, RN, Blazor, Swift |
+| AI Chat | Streaming AI chat interface with session management and TTS | React, RN, Blazor, Swift |
 | AI Proxy | Server-side AI API proxy (keeps API keys off the client) | Node.js |
-| App Tiers | Subscription tiers, feature gating, and pricing display | React, RN, Blazor |
-| Messaging | Real-time messaging with threads, reactions, typing indicators | React, RN, Blazor |
-| Payments | Stripe payment forms and subscription management | React, Blazor |
-| Theme | Light/dark mode, CSS variables, and theme switching | React, RN, Blazor |
-| Disclaimers | Terms acceptance with version-aware consent tracking | React, RN, Blazor |
-| Notifications | Toast notifications and in-app alerts | React, RN, Blazor |
+| AI Flows | SSE-streamed LangGraph flow runs with human-in-the-loop interrupts, run history, and per-user scheduled subscriptions | React, RN, Blazor, Swift |
+| Documents | Tenant document upload/parse/text/download (tier feature `DOCUMENTS`; images accepted as stored assets) | React, RN (hooks), Blazor/Razor, Swift (service) |
+| App Tiers | Subscription tiers, feature gating, and pricing display | React, RN, Blazor, Swift |
+| Feature Gate | Cached fail-open entitlement gate over user features | React, RN, Blazor, Swift |
+| Messaging | Real-time messaging with threads, reactions, typing indicators | React, RN, Blazor, Swift |
+| Payments | Stripe payment forms and subscription management (StoreKit 2 / App Store on iOS) | React, Blazor, Swift |
+| Theme | Light/dark mode, CSS variables, and theme switching | React, RN, Blazor, Swift |
+| Disclaimers | Terms acceptance with version-aware consent tracking, surfaced at signup | React, RN, Blazor, Swift |
+| Consent | Cookie-consent banner with preferences + third-party script gating | React, RN, Blazor, Swift |
+| Notifications | Toasts, in-app inbox, delivery preferences, browser/web push | React, RN, Blazor, Swift |
+| Feedback | In-app feedback widget with analytics | React, RN, Blazor, Swift |
+| Usage | Usage dashboard + overage summary | React, RN, Blazor, Swift |
+| Seeder | Idempotent server-side app-data seeding with server ledger/history (X-API-Key auth, `tiers:manage` scope) | Node.js, .NET |
 
-## MCP Tools (76 total)
+## MCP Tools (95 total)
 
-### Read Tools (33)
+### Read Tools (43)
 | Tool | Description |
 |------|-------------|
 | `wildwood_get_app_info` | Current app config (name, URLs, IsMCPEnabled) |
@@ -67,7 +75,7 @@ This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io
 | `wildwood_get_payment_config` | Payment config (no secrets) |
 | `wildwood_get_disclaimer_config` | Disclaimer configuration |
 | `wildwood_list_app_tiers` | Tiers with pricing, features, limits |
-| `wildwood_list_component_configs` | All component configurations |
+| `wildwood_list_component_configs` | All component configurations (incl. seeder summary) |
 | `wildwood_get_integration_guide` | SDK setup instructions |
 | `wildwood_get_analytics` | Usage analytics |
 | `wildwood_list_config_snapshots` | Config backup snapshots |
@@ -79,6 +87,16 @@ This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io
 | `wildwood_list_pricing_models` | Company pricing models |
 | `wildwood_list_feature_overrides` | Active per-user / per-company feature overrides |
 | `wildwood_list_expiring_overrides` | Feature overrides expiring within N days |
+| `wildwood_get_feedback_config` | App feedback-widget configuration |
+| `wildwood_get_feedback_analytics` | Feedback volume/trend analytics |
+| `wildwood_get_consent_config` | App cookie/consent configuration |
+| `wildwood_list_company_scripts` | Company-level third-party scripts |
+| `wildwood_list_app_scripts` | App-level third-party scripts |
+| `wildwood_list_seed_ledger` | Seed run ledger (seeded state per task per environment) |
+| `wildwood_list_seed_history` | Dated seed run history, newest first |
+| `wildwood_list_api_providers` | Company API providers (slug, auth, spec, MCP wrap state) |
+| `wildwood_detect_api` | Detect any API's spec/auth/endpoints from a URL or pasted spec |
+| `wildwood_get_mcp_wrap_url` | Public MCP wrap URL + claude mcp add instructions |
 | `hosting_check_slug` | Check if a hosting subdomain slug is available |
 | `hosting_deployment_list` | List app deployments |
 | `hosting_deployment_get` | Get deployment details |
@@ -91,7 +109,7 @@ This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io
 | `database_hosting_get_connection` | Retrieve database connection string |
 | `database_hosting_backup_list` | List database backups |
 
-### Write Tools (43) — require `confirm: true`
+### Write Tools (52) — require `confirm: true`
 | Tool | Description |
 |------|-------------|
 | `wildwood_create_app` | Create a new app |
@@ -122,6 +140,15 @@ This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io
 | `wildwood_manage_addon_pricing` | Add/remove add-on pricing |
 | `wildwood_set_feature_override` | Grant/revoke a feature for a user or company outside their tier |
 | `wildwood_remove_feature_override` | Remove a feature override |
+| `wildwood_manage_feedback_config` | Create/update the feedback-widget configuration |
+| `wildwood_manage_consent_config` | Create/update the consent configuration (bumps version) |
+| `wildwood_manage_company_script` | Create/update/delete a company third-party script |
+| `wildwood_manage_app_script` | Create/update/delete an app third-party script |
+| `wildwood_manage_seeder_config` | Update seeder config (primarily the Enabled kill-switch) |
+| `wildwood_import_api` | Import ANY API as a self-contained provider (encrypted creds) |
+| `wildwood_set_api_credentials` | Set/rotate a provider's credentials and auth scheme |
+| `wildwood_generate_mcp_tools` | Generate MCP tools from the provider's spec |
+| `wildwood_manage_mcp_wrap` | Enable/disable the public MCP wrap, metadata, tokens |
 | `hosting_deployment_create` | Create a new hosted deployment slot |
 | `hosting_deployment_deploy` | Deploy an app build to a hosted slot |
 | `hosting_deployment_start` | Start a deployment |
@@ -149,8 +176,14 @@ Each component needs backend configuration before it works in the SDK. Use MCP t
 | Auth settings & providers | Yes (incl. OAuth credentials) | — |
 | AI configurations | Yes (full config + TTS) | — |
 | AI providers & API keys | Yes (encrypted key storage) | — |
+| AI Flows (design/publish) | No | Flow editor (per-node provider + model selection) |
 | Messaging settings | Yes (incl. notifications) | — |
 | Disclaimers display | Yes (create/update) | Disclaimer text/versions |
+| Consent config | Yes | — |
+| Third-party scripts | Yes (company + app level) | — |
+| Feedback config | Yes (+ analytics read) | — |
+| Documents config & admin files | No MCP tools yet | WildwoodAdmin (per-app config, statistics, file management) |
+| Seeder | Yes (kill-switch/knobs; ledger + history read) | API-key minting (with `tiers:manage` scope) |
 | App settings & MCP toggle | Yes (incl. store URLs, limits) | — |
 | App tiers & pricing | Yes (full CRUD) | — |
 | Tier features & limits | Yes (add/update/remove) | — |
@@ -161,6 +194,7 @@ Each component needs backend configuration before it works in the SDK. Use MCP t
 | Theme | Yes (colors, fonts, CSS) | — |
 | CAPTCHA | Yes (incl. encrypted secret) | — |
 | Subscriptions config | Yes (billing, trials, limits) | — |
+| API import & MCP wrap | Yes (detect, import, credentials, tool-gen, wrap) | — |
 
 ### Quick Setup: AI Chat
 
@@ -184,6 +218,11 @@ wildwood_manage_auth_providers(providerType: "Google", isEnabled: true,
   companyAuthProviderId: "<id>", confirm: true)
 ```
 
+Note: a provider only appears on the login screen when it is app-enabled AND has
+credentials configured — the server hides credential-less and company-disabled
+providers, and apps with no configured providers get local auth only. Provider
+buttons render the configured `buttonText` when set (fallback: the display name).
+
 ### Quick Setup: Messaging
 
 ```
@@ -191,11 +230,26 @@ wildwood_manage_messaging_config(isMessagingEnabled: true, allowFileAttachments:
   maxMessageLength: 5000, allowPrivateMessages: true, showTypingIndicators: true, confirm: true)
 ```
 
+### Seeder (server-side app-data seeding)
+
+The `@wildwood/node` and .NET seeders provision app data (tiers, AI flows,
+provider wiring, ...) idempotently at server startup, recording a per-task
+ledger + history on the server. Authentication is **X-API-Key-first**: mint an
+app API key with the `tiers:manage` scope in WildwoodAdmin and set it as the
+seeder's `apiKey`. Ops via MCP:
+
+```
+wildwood_list_seed_ledger(environment: "Production")   → what's seeded, per task
+wildwood_list_seed_history(take: 20)                   → recent runs, newest first
+wildwood_manage_seeder_config(enabled: false, confirm: true)   → kill-switch
+```
+
 ## Key Notes
 
-- `@wildwood/core` is always required — framework packages depend on it
+- `@wildwood/core` is always required for JS — framework packages depend on it
 - All SDKs handle JWT token management automatically (refresh at 80% lifetime)
 - Theme CSS must be imported in React: `@wildwood/react/styles`
 - API base URL: `https://api.wildwoodworks.io/api`
 - Admin portal: `https://admin.wildwoodworks.io`
+- Documents is tier-gated (`DOCUMENTS` feature); uploads are validated against the app's document configuration (size/type/storage caps) server-side
 - All write tools auto-snapshot before changes — if something goes wrong, use `wildwood_list_config_snapshots()` to find the previous state, then `wildwood_restore_config_snapshot(snapshotId, confirm: true)` to roll back. Always offer to restore when a config change produces unexpected results.
