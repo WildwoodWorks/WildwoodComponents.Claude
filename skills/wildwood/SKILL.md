@@ -579,6 +579,7 @@ Examine the current working directory to determine the project type:
 | `package.json` (generic) | Vanilla JS/TS | `@wildwood/core` |
 | `*.csproj` with Blazor SDK | Blazor (.NET) | `WildwoodComponents.Blazor` |
 | `*.csproj` with Web SDK | ASP.NET Core | `WildwoodComponents.Blazor` |
+| `Package.swift` / `*.xcodeproj` | Swift/iOS (SwiftUI) | `WildwoodCore` + `WildwoodSwiftUI` (SPM) |
 | No project files | New project | Ask user preference |
 
 Tell the user what was detected and confirm.
@@ -597,7 +598,7 @@ npm install @wildwood/react-native   # React Native
 npm install @wildwood/node           # Node.js/Express
 ```
 
-Source: https://github.com/WildwoodWorks/Wildwood.JS
+Source: https://github.com/WildwoodWorks/WildwoodComponents.JS
 
 ### .NET Projects
 
@@ -605,7 +606,18 @@ Source: https://github.com/WildwoodWorks/Wildwood.JS
 dotnet add package WildwoodComponents.Blazor
 ```
 
-Source: https://github.com/WildwoodWorks/WildwoodComponents
+Source: https://github.com/WildwoodWorks/WildwoodComponents.Net
+
+### Swift/iOS Projects
+
+Add the SPM package (Xcode: File → Add Package Dependencies, or in `Package.swift`):
+
+```swift
+.package(url: "https://github.com/WildwoodWorks/WildwoodComponents.Swift", branch: "main")
+// products: WildwoodCore (services), WildwoodSwiftUI (components; iOS 26+)
+```
+
+Source: https://github.com/WildwoodWorks/WildwoodComponents.Swift
 
 ## Integrate Step 4: Configure the SDK
 
@@ -821,12 +833,23 @@ Ask which features the user wants. For each, show exact imports and usage.
 | **Authentication** | `useAuth()` | `useAuth()` | `<AuthenticationComponent>` | `createAuthMiddleware()` |
 | **AI Chat** | `useAIChat()` | `useAIChat()` | `<AIChatComponent>` | — |
 | **AI Proxy** | — | — | — | `createProxyMiddleware()` |
+| **AI Flows** | `useAIFlow()`, `useAIFlowSubscriptions()` | same hooks | `<AIFlowComponent>` | — |
+| **Documents** | `useDocuments()` | `useDocuments()` | `IDocumentService` | — |
 | **App Tiers** | `useSubscriptions()` | `useSubscriptions()` | `<AppTierComponent>` | — |
+| **Feature Gate** | `<FeatureGate>` / `useFeatures()` | same | `<FeatureGateComponent>` | — |
 | **Messaging** | `useMessaging()` | `useMessaging()` | `<MessagingComponent>` | — |
 | **Payments** | `usePayments()` | — | `<PaymentComponent>` | — |
 | **Theme** | `useTheme()` | `useTheme()` | `<ThemeComponent>` | — |
 | **Disclaimers** | `useAuth()` | `useAuth()` | `<DisclaimerComponent>` | — |
-| **Notifications** | via `client.notifications` | via `client.notifications` | `<NotificationComponent>` | — |
+| **Consent** | `<ConsentBanner>` | `<ConsentBanner>` | `<ConsentComponent>` | — |
+| **Notifications** | inbox + toasts via `client.notifications` | same | `<NotificationComponent>` | — |
+| **Feedback** | `<FeedbackComponent>` | `<FeedbackComponent>` | `<FeedbackComponent>` | — |
+| **Seeder** | — | — | — | `runSeeder()` (startup app-data seeding) |
+
+Swift/iOS apps get the same components (31 SwiftUI views + `WildwoodCore`
+services) from the `WildwoodComponents.Swift` SPM package — `WildwoodClient`
+exposes `auth`, `ai`, `documents`, `messaging`, `payment`, `appTier`,
+`notifications`, and more, mirroring `@wildwood/core` method-for-method.
 
 ### React Hook Examples
 
@@ -870,7 +893,7 @@ const { theme, setTheme } = useTheme();
 
 If you discover a bug in a WildwoodComponent during integration or testing, **fix it upstream and submit a PR** rather than working around it:
 
-1. **Identify the source**: JS/TS → `https://github.com/WildwoodWorks/Wildwood.JS`, Blazor → `https://github.com/WildwoodWorks/WildwoodComponents`
+1. **Identify the source**: JS/TS → `https://github.com/WildwoodWorks/WildwoodComponents.JS`, Blazor/.NET → `https://github.com/WildwoodWorks/WildwoodComponents.Net`, Swift → `https://github.com/WildwoodWorks/WildwoodComponents.Swift`
 2. **Clone**, create a `fix/` branch, fix the bug, ensure tests pass
 3. **PR** via `gh pr create` with reproduction steps
 4. **Temporary workaround** in the user's app if urgent, with `// TODO: Remove workaround when WildwoodComponents PR #X is merged`
@@ -1352,8 +1375,8 @@ Background knowledge about the Wildwood platform architecture, SDK, and MCP tool
 ## Platform Architecture
 
 ```
-User's App (React, RN, Blazor, Node.js)
-  └─ WildwoodComponents SDK (@wildwood/core + framework pkg)
+User's App (React, RN, Blazor, Swift/iOS, Node.js)
+  └─ WildwoodComponents SDK (@wildwood/core + framework pkg, or WildwoodCore/WildwoodSwiftUI)
        │ HTTPS + JWT + SignalR
        ▼
 WildwoodAPI (.NET 10) — api.wildwoodworks.io
@@ -1376,7 +1399,7 @@ WildwoodAdmin (Razor Pages) — admin.wildwoodworks.io
 
 ### @wildwood/core (Always Required)
 
-**Services:** AuthService, SessionManager, AIService, MessagingService, PaymentService, SubscriptionService, TwoFactorService, CaptchaService, DisclaimerService, AppTierService, ThemeService, NotificationService
+**Services:** AuthService, SessionManager, AIService, AIFlowService, AIFlowSubscriptionService, DocumentService, MessagingService, PaymentService, TwoFactorService, CaptchaService, DisclaimerService, AppTierService, ThemeService, NotificationService, FeedbackService
 
 **Client Factory:**
 ```typescript
@@ -1388,21 +1411,29 @@ const client = createWildwoodClient({ apiUrl, appId, platform? });
 
 ### @wildwood/react
 - Provider: `<WildwoodProvider client={client}>`
-- Hooks: `useAuth()`, `useAIChat()`, `useMessaging()`, `usePayments()`, `useSubscriptions()`, `useTheme()`
-- 16 pre-built UI components
+- Hooks: `useAuth()`, `useAIChat()`, `useAIFlow()`, `useDocuments()`, `useMessaging()`, `usePayments()`, `useSubscriptions()`, `useFeatures()`, `useTheme()` (21 hooks)
+- 59 pre-built UI components
 - Styles: `@wildwood/react/styles`
 
 ### @wildwood/react-native
-- Same hook API as React, native UI components, StyleSheet themes
+- Same hook API as React (shared via `@wildwood/react-shared`), native UI components, StyleSheet themes
 
 ### @wildwood/node
 - `createAuthMiddleware(client)` — JWT validation for Express
 - `createProxyMiddleware(client)` — AI API proxy
 - `AdminClient` — server-side admin operations
 - `tokenValidator` — JWT verification
+- `runSeeder(options, tasks)` — idempotent startup app-data seeding (X-API-Key auth with the `tiers:manage` scope; server-side ledger + history)
 
 ### WildwoodComponents.Blazor
-- Components: `<AuthenticationComponent>`, `<AIChatComponent>`, `<MessagingComponent>`, `<PaymentComponent>`, `<ThemeComponent>`, `<AppTierComponent>`, `<DisclaimerComponent>`, `<NotificationComponent>`
+- Components: `<AuthenticationComponent>`, `<AIChatComponent>`, `<AIFlowComponent>`, `<MessagingComponent>`, `<PaymentComponent>`, `<ThemeComponent>`, `<AppTierComponent>`, `<FeatureGateComponent>`, `<DisclaimerComponent>`, `<ConsentComponent>`, `<NotificationComponent>`, `<FeedbackComponent>` (29 components; `WildwoodComponents.Razor` mirrors them as MVC ViewComponents)
+- `WildwoodComponents.Shared` hosts the framework-neutral Seeder (`ISeederTask`, `SeederRunner`, auto-startup `SeederRunnerService`)
+
+### WildwoodComponents.Swift (WildwoodCore + WildwoodSwiftUI)
+- SPM package, iOS 26+, Swift 6 strict concurrency
+- `WildwoodClient` factory mirrors `@wildwood/core` method-for-method: `auth`, `session`, `ai` (+ flows and flow subscriptions), `documents`, `messaging`, `payment`, `appTier`, `twoFactor`, `captcha`, `disclaimer`, `feedback`, `notifications`, `theme`
+- 31 SwiftUI components with `@Observable` view models; tokens stored in the Keychain
+- Payments are processor-agnostic: StoreKit 2 for the App Store path, web checkout for other providers
 
 ## API Conventions
 
@@ -1411,11 +1442,11 @@ const client = createWildwoodClient({ apiUrl, appId, platform? });
 - Login response: `{ jwtToken, email, firstName, ... }` (no `token` alias, no `user` sub-object)
 - DTO naming: PascalCase (Email, Password, AppId)
 
-## MCP Tools (46 total: 20 read, 26 write)
+## MCP Tools (95 total: 43 read, 52 write)
 
 All write tools require `confirm: true` and auto-snapshot before changes.
 
-### Read Tools (20)
+### Read Tools (43)
 
 | Tool | Description |
 |------|-------------|
@@ -1429,7 +1460,7 @@ All write tools require `confirm: true` and auto-snapshot before changes.
 | `wildwood_get_payment_config` | Payment config (no secrets) |
 | `wildwood_get_disclaimer_config` | Disclaimer configuration |
 | `wildwood_list_app_tiers` | Tiers with features, limits, pricing |
-| `wildwood_list_component_configs` | All component status |
+| `wildwood_list_component_configs` | All component status (incl. seeder summary) |
 | `wildwood_get_integration_guide` | Dynamic SDK setup instructions |
 | `wildwood_get_analytics` | App usage analytics |
 | `wildwood_list_config_snapshots` | Config backup snapshots |
@@ -1439,8 +1470,31 @@ All write tools require `confirm: true` and auto-snapshot before changes.
 | `wildwood_get_theme` | App theme configuration |
 | `wildwood_get_captcha_config` | CAPTCHA configuration (no secrets) |
 | `wildwood_get_subscription_config` | Subscription settings |
+| `wildwood_list_feature_overrides` | Active per-user / per-company feature overrides |
+| `wildwood_list_expiring_overrides` | Feature overrides expiring within N days |
+| `wildwood_get_feedback_config` | App feedback-widget configuration |
+| `wildwood_get_feedback_analytics` | Feedback volume/trend analytics |
+| `wildwood_get_consent_config` | App cookie/consent configuration |
+| `wildwood_list_company_scripts` | Company-level third-party scripts |
+| `wildwood_list_app_scripts` | App-level third-party scripts |
+| `wildwood_list_seed_ledger` | Seed run ledger (seeded state per task per environment) |
+| `wildwood_list_seed_history` | Dated seed run history, newest first |
+| `wildwood_list_api_providers` | Company API providers (slug, auth, spec, MCP wrap state) |
+| `wildwood_detect_api` | Detect any API's spec/auth/endpoints from a URL or pasted spec |
+| `wildwood_get_mcp_wrap_url` | Public MCP wrap URL + claude mcp add instructions |
+| `hosting_check_slug` | Check if a hosting subdomain slug is available |
+| `hosting_deployment_list` | List app deployments |
+| `hosting_deployment_get` | Get deployment details |
+| `hosting_deployment_logs` | Retrieve deployment build/runtime logs |
+| `hosting_domain_list` | List custom domains for a deployment |
+| `hosting_metrics` | Hosting metrics (requests, bandwidth, errors) |
+| `database_hosting_list` | List provisioned databases |
+| `database_hosting_get` | Get database details |
+| `database_hosting_stats` | Database usage stats |
+| `database_hosting_get_connection` | Retrieve database connection string |
+| `database_hosting_backup_list` | List database backups |
 
-### Write Tools (26)
+### Write Tools (52)
 
 | Tool | Description |
 |------|-------------|
@@ -1469,6 +1523,32 @@ All write tools require `confirm: true` and auto-snapshot before changes.
 | `wildwood_manage_addon_feature` | Add/update/remove add-on features |
 | `wildwood_manage_addon_limit` | Add/update/remove add-on limits |
 | `wildwood_manage_addon_pricing` | Add/remove add-on pricing |
+| `wildwood_set_feature_override` | Grant/revoke a feature for a user or company outside their tier |
+| `wildwood_remove_feature_override` | Remove a feature override |
+| `wildwood_manage_feedback_config` | Create/update the feedback-widget configuration |
+| `wildwood_manage_consent_config` | Create/update the consent configuration (bumps version) |
+| `wildwood_manage_company_script` | Create/update/delete a company third-party script |
+| `wildwood_manage_app_script` | Create/update/delete an app third-party script |
+| `wildwood_manage_seeder_config` | Update seeder config (primarily the Enabled kill-switch) |
+| `wildwood_import_api` | Import ANY API as a self-contained provider (encrypted creds) |
+| `wildwood_set_api_credentials` | Set/rotate a provider's credentials and auth scheme |
+| `wildwood_generate_mcp_tools` | Generate MCP tools from the provider's spec |
+| `wildwood_manage_mcp_wrap` | Enable/disable the public MCP wrap, metadata, tokens |
+| `hosting_deployment_create` | Create a new hosted deployment slot |
+| `hosting_deployment_deploy` | Deploy an app build to a hosted slot |
+| `hosting_deployment_start` | Start a deployment |
+| `hosting_deployment_stop` | Stop a deployment |
+| `hosting_deployment_rollback` | Roll a deployment back to a prior build |
+| `hosting_deployment_delete` | Delete a deployment |
+| `hosting_domain_add` | Add a custom domain |
+| `hosting_domain_remove` | Remove a custom domain |
+| `database_hosting_create` | Provision a new managed Azure SQL database |
+| `database_hosting_update` | Update database tier/size |
+| `database_hosting_delete` | Delete a database (irreversible) |
+| `database_hosting_suspend` | Suspend a database to reduce cost |
+| `database_hosting_resume` | Resume a suspended database |
+| `database_hosting_backup_create` | Create an on-demand backup |
+| `database_hosting_backup_restore` | Restore database from a backup |
 | `wildwood_restore_config_snapshot` | Restore from backup |
 
 ### Configuration Snapshots & Rollback
