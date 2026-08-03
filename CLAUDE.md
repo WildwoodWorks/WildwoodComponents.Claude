@@ -58,7 +58,7 @@ This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io
 | Notifications | Toasts, in-app inbox, delivery preferences, browser/web push | React, RN, Blazor, Swift |
 | Feedback | In-app feedback widget with analytics | React, RN, Blazor, Swift |
 | Usage | Usage dashboard + overage summary | React, RN, Blazor, Swift |
-| Seeder | Idempotent server-side app-data seeding with server ledger/history (X-API-Key auth, `tiers:manage` scope) | Node.js, .NET |
+| Seeder | Idempotent server-side app-data seeding with server ledger/history (X-API-Key auth; service key scoped `ai:manage tiers:manage`) | Node.js, .NET |
 
 ## MCP Tools (95 total)
 
@@ -183,7 +183,7 @@ Each component needs backend configuration before it works in the SDK. Use MCP t
 | Third-party scripts | Yes (company + app level) | — |
 | Feedback config | Yes (+ analytics read) | — |
 | Documents config & admin files | No MCP tools yet | WildwoodAdmin (per-app config, statistics, file management) |
-| Seeder | Yes (kill-switch/knobs; ledger + history read) | API-key minting (with `tiers:manage` scope) |
+| Seeder | Yes (kill-switch/knobs; ledger + history read) | Service-key minting (Service Keys card; scopes `ai:manage tiers:manage`) |
 | App settings & MCP toggle | Yes (incl. store URLs, limits) | — |
 | App tiers & pricing | Yes (full CRUD) | — |
 | Tier features & limits | Yes (add/update/remove) | — |
@@ -232,11 +232,15 @@ wildwood_manage_messaging_config(isMessagingEnabled: true, allowFileAttachments:
 
 ### Seeder (server-side app-data seeding)
 
-The `@wildwood/node` and .NET seeders provision app data (tiers, AI flows,
-provider wiring, ...) idempotently at server startup, recording a per-task
-ledger + history on the server. Authentication is **X-API-Key-first**: mint an
-app API key with the `tiers:manage` scope in WildwoodAdmin and set it as the
-seeder's `apiKey`. Ops via MCP:
+The `@wildwood/node` and .NET seeders provision app data (tiers, AI configs +
+skills, provider wiring, ...) idempotently at server startup, recording a
+per-task ledger + history on the server. Authentication is **X-API-Key-first**:
+mint ONE **service key** with `scopes: "ai:manage tiers:manage"` (Service Keys
+card on the app's Details page in WildwoodAdmin — NOT the app's ambient client
+key, which can never carry scopes) and set it as the seeder's `apiKey`. Service
+keys expire after 1 year and are shown once at mint. The ledger's environment
+is a LABEL (the app id picks the target) — set it to match the app you seed.
+Ops via MCP:
 
 ```
 wildwood_list_seed_ledger(environment: "Production")   → what's seeded, per task

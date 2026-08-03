@@ -23,6 +23,8 @@ Parse the user's message (the text after `/wildwood`) to determine intent:
 | "help", "what can you do", "docs", "reference" | **Show Menu** |
 | Anything about configuring AI, auth, payments, themes, tiers | **Integrate** (Step 5) |
 | Anything about MCP tools, snapshots, rollback | **Platform Reference** |
+| Seeder tasks, seed ledger, scoped/service API keys, `tiers:manage`/`ai:manage`, seeder 401/403 | Read `references/seeding-and-service-keys.md` first |
+| AI config invisible in WildwoodAdmin, AI relay 400s, model/provider mismatch, chat assistant provisioning | Read `references/ai-configuration.md` first |
 
 If the intent is ambiguous, show the menu and ask.
 
@@ -707,6 +709,13 @@ wildwood_manage_ai_config(                      # Create AI config linked to pro
   isChatEnabled: true, confirm: true)
 ```
 
+**Two mistakes that break AI configs silently** (details + fixes in
+`references/ai-configuration.md`):
+1. The relay routes by **model name prefix**, not the linked provider — the model must imply
+   the same provider you linked (`gpt-*` needs an OpenAI key, `claude-*` an Anthropic key).
+2. WildwoodAdmin's pages filter configs by exact `configurationType` (`ttschat` = AI Chat
+   page, `proxy`, `flow`) — any other value makes the config invisible in the UI.
+
 ### Authentication
 ```
 wildwood_manage_auth_config(                    # Set auth policy
@@ -1372,6 +1381,12 @@ Admin Portal: https://admin.wildwoodworks.io
 
 Background knowledge about the Wildwood platform architecture, SDK, and MCP tools.
 
+**Deep references** (in this skill's `references/` directory — read when the topic comes up):
+- `seeding-and-service-keys.md` — client vs service keys, scopes (`tiers:manage`, `ai:manage`),
+  the seed ledger's environment label, live-API gotchas for idempotent tasks
+- `ai-configuration.md` — model-name→provider routing, `configurationType` page filters,
+  retired model ids, the ensure routes, the skill-carries-the-prompt chat pattern
+
 ## Platform Architecture
 
 ```
@@ -1423,7 +1438,7 @@ const client = createWildwoodClient({ apiUrl, appId, platform? });
 - `createProxyMiddleware(client)` — AI API proxy
 - `AdminClient` — server-side admin operations
 - `tokenValidator` — JWT verification
-- `runSeeder(options, tasks)` — idempotent startup app-data seeding (X-API-Key auth with the `tiers:manage` scope; server-side ledger + history)
+- `runSeeder(options, tasks)` — idempotent startup app-data seeding (X-API-Key auth; mint ONE service key with `scopes: "ai:manage tiers:manage"` for tier-catalog + AI provisioning tasks; server-side ledger + history — see `references/seeding-and-service-keys.md`)
 
 ### WildwoodComponents.Blazor
 - Components: `<AuthenticationComponent>`, `<AIChatComponent>`, `<AIFlowComponent>`, `<MessagingComponent>`, `<PaymentComponent>`, `<ThemeComponent>`, `<AppTierComponent>`, `<FeatureGateComponent>`, `<DisclaimerComponent>`, `<ConsentComponent>`, `<NotificationComponent>`, `<FeedbackComponent>` (29 components; `WildwoodComponents.Razor` mirrors them as MVC ViewComponents)
