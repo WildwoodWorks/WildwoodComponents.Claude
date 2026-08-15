@@ -26,7 +26,7 @@ Just tell it what you need — setup, integrate, deploy, hosting, database, or s
 
 ## MCP Server Connection
 
-This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io/mcp`. On first connection, a browser window opens for OAuth login at WildwoodAdmin. After authentication, Claude can use 95 MCP tools (43 read, 52 write) to query and fully configure Wildwood apps — including AI providers, auth, payments, themes, CAPTCHA, tiers, add-ons, subscriptions, feedback, consent, third-party scripts, the seeder, app hosting, and database hosting. All write tools require `confirm: true` and auto-snapshot before changes. Run `/wildwood` for the full tool reference and all platform workflows.
+This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io/mcp`. On first connection, a browser window opens for OAuth login at WildwoodAdmin. After authentication, Claude can use 97 MCP tools (44 read, 53 write) to query and fully configure Wildwood apps — including AI providers, auth, payments, themes, CAPTCHA, tiers, add-ons, subscriptions, feedback, consent, third-party scripts, the seeder, app hosting, and database hosting. All write tools require `confirm: true` and auto-snapshot before changes. Run `/wildwood` for the full tool reference and all platform workflows.
 
 ## SDK Packages
 
@@ -60,9 +60,9 @@ This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io
 | Usage | Usage dashboard + overage summary | React, RN, Blazor, Swift |
 | Seeder | Idempotent server-side app-data seeding with server ledger/history (X-API-Key auth; service key scoped `ai:manage tiers:manage`) | Node.js, .NET |
 
-## MCP Tools (95 total)
+## MCP Tools (97 total)
 
-### Read Tools (43)
+### Read Tools (44)
 | Tool | Description |
 |------|-------------|
 | `wildwood_get_app_info` | Current app config (name, URLs, IsMCPEnabled) |
@@ -92,6 +92,7 @@ This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io
 | `wildwood_get_consent_config` | App cookie/consent configuration |
 | `wildwood_list_company_scripts` | Company-level third-party scripts |
 | `wildwood_list_app_scripts` | App-level third-party scripts |
+| `wildwood_list_app_settings` | App key/value settings (encrypted values masked) |
 | `wildwood_list_seed_ledger` | Seed run ledger (seeded state per task per environment) |
 | `wildwood_list_seed_history` | Dated seed run history, newest first |
 | `wildwood_list_api_providers` | Company API providers (slug, auth, spec, MCP wrap state) |
@@ -109,7 +110,7 @@ This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io
 | `database_hosting_get_connection` | Retrieve database connection string |
 | `database_hosting_backup_list` | List database backups |
 
-### Write Tools (52) — require `confirm: true`
+### Write Tools (53) — require `confirm: true`
 | Tool | Description |
 |------|-------------|
 | `wildwood_create_app` | Create a new app |
@@ -144,6 +145,7 @@ This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io
 | `wildwood_manage_consent_config` | Create/update the consent configuration (bumps version) |
 | `wildwood_manage_company_script` | Create/update/delete a company third-party script |
 | `wildwood_manage_app_script` | Create/update/delete an app third-party script |
+| `wildwood_manage_app_setting` | Create/update/delete an app setting (optional encryption at rest) |
 | `wildwood_manage_seeder_config` | Update seeder config (primarily the Enabled kill-switch) |
 | `wildwood_import_api` | Import ANY API as a self-contained provider (encrypted creds) |
 | `wildwood_set_api_credentials` | Set/rotate a provider's credentials and auth scheme |

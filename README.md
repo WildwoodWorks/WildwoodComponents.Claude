@@ -99,7 +99,7 @@ One command does everything — just tell it what you need:
 
 Connects Claude to the Wildwood API at `api.wildwoodworks.io/mcp` via OAuth 2.1 with PKCE. Supports the native authorization-code flow (RFC 6749), client-id metadata documents (CIMD), resource indicators (RFC 8707), and the device authorization grant (RFC 8628) for headless environments.
 
-Once connected, Claude can query and manage your Wildwood apps directly using 95 MCP tools (43 read, 52 write).
+Once connected, Claude can query and manage your Wildwood apps directly using 97 MCP tools (44 read, 53 write).
 
 ## WildwoodComponents
 
