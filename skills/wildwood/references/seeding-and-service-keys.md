@@ -11,7 +11,7 @@ Both live in the same `ApiKeys` table, but they are different credentials:
 | | **Client key** (ambient) | **Service key** (scoped) |
 |---|---|---|
 | Created by | "Regenerate API Key" on the app page | Service Keys card (App Details) or `POST /api/apikeys` with `scopes` |
-| Scopes | never — the server refuses to add any | ≥1, set at mint (`"ai:manage tiers:manage"`) |
+| Scopes | never — the server refuses to add any | ≥1, set at mint (`"ai:manage roles:manage tiers:manage"`) |
 | Mirrored to the app record | yes — that's the value the app page displays | never (would hand the capability to every client) |
 | Expiry | optional | **forced, default 1 year** — plan an annual rotation |
 | Value visible | any time, on the app record | **exactly once, at mint** — copy it immediately |
@@ -21,7 +21,7 @@ Key facts:
 
 - A scoped key authenticates everywhere the client key does **plus** the scoped surfaces —
   a seeder needs only ONE service key carrying all the scopes its tasks use.
-- **Mint with all needed scopes at once**: `scopes: "ai:manage tiers:manage"` (space-delimited).
+- **Mint with all needed scopes at once**: `scopes: "ai:manage roles:manage tiers:manage"` (space-delimited).
   Minting "a key for the app" without the scopes field produces a client key that will 403 on
   every scoped surface — necessary but not sufficient.
 - The ambient client key **cannot be upgraded**: the API refuses to add scopes to it
@@ -39,10 +39,52 @@ Key facts:
 |---|---|---|---|
 | `tiers:manage` | TierManagement | tier catalog: tiers, features, limits, pricing, add-ons, feature definitions | `APP_TIER_MANAGEMENT` |
 | `ai:manage` | AIManagement | the app-scoped ensure routes: `PUT …/{appId}/ai/ensure`, `PUT …/{appId}/skills/ensure` | `AI_SKILLS` (skill leg) |
+| `roles:manage` | AppRolesManagement | per-app roles + user assignments: `GET/POST api/apps/{appId}/roles`, `PUT/DELETE …/roles/{roleId}`, `GET …/roles/users/{userId}?companyClientId=`, `POST/DELETE …/roles/assignments` | — |
 
 Deliberately **never** scoped: entitlement granting (subscriptions, tier changes, overrides,
 usage resets — Roles-only), secret material (payment secrets, provider API keys), and
 `apikeys:*` (a key that mints keys is self-escalation). Scopes never grant roles.
+
+## App roles from the seeder (`roles:manage`)
+
+A tenant app can provision its own per-app roles headlessly and assign them to its users. Unlike
+every other scope, this one is bound to a **single app**: the server compares the key's own
+`app_id` to the route `{appId}`, so a key minted for app A is refused on app B *even when one
+company owns both*. Mint one service key per app you seed roles for.
+
+Only the five **writes** require the scope. The two reads (`GET …/roles`,
+`GET …/roles/users/{userId}`) carry no policy of their own, so they admit whatever the per-app
+filter admits — and that is **wider than one app for JWT callers**:
+
+- an **api-key** principal, only for its own `app_id` — which deliberately includes the app's plain
+  browser-shipped client key, so an app can list its own roles without a service key;
+- any authenticated **JWT** caller whose **company owns the app** — so a signed-in user of one app
+  can list the roles, and a given user's assignments, of a *sibling app in the same company*.
+
+Accepted by design (role names and assignments are not secret), but it means a role's name or
+description is company-visible — do not encode anything sensitive in one.
+
+Shapes, all under `api/apps/{appId}/roles`:
+
+| Call | Body / query | Notes |
+|---|---|---|
+| `GET` | — | `AppRoleDto { Id, AppId, Name, Description, SortOrder, IsSystem }` |
+| `POST` | `AppRoleCreateUpdateDto { Name, Description?, SortOrder }` | `201`; name is trimmed |
+| `PUT …/{roleId}` | same DTO | `204`; `404` when the role is not this app's |
+| `DELETE …/{roleId}` | — | `204`; `400` for a system role; cascades to its assignments |
+| `GET …/users/{userId}` | `?companyClientId=` | returns that client's assignments **plus** legacy app-wide (null-client) ones |
+| `POST …/assignments` | `AssignAppRoleRequest { UserId, AppRoleId, CompanyClientId? }` | idempotent — a repeat returns the existing row, never a duplicate or an error |
+| `DELETE …/assignments` | `?userId=&appRoleId=&companyClientId=` | `204`; `404` when no such assignment |
+
+Idempotency rules a seed task must rely on:
+
+- **A duplicate role name is `400 "Role '<name>' already exists for this app."`** — not `409`. Treat
+  it as the no-op, per the duplicate-creates rule above.
+- **A repeated assignment is a plain `200`** with the existing row, so re-running is free.
+- **`CompanyClientId` must belong to the app** — a client of a different app is `400`, an unknown
+  client `404`. App-wide (null) and client-scoped assignments of the same role coexist.
+- There is no way to look a user up by email from the seeder. Assign at runtime with the `sub` the
+  consuming app already holds.
 
 ## The seed ledger — environment is a LABEL, not a target
 
