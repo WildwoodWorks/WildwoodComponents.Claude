@@ -26,7 +26,7 @@ Just tell it what you need — setup, integrate, deploy, hosting, database, or s
 
 ## MCP Server Connection
 
-This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io/mcp`. On first connection, a browser window opens for OAuth login at WildwoodAdmin. After authentication, Claude can use 110 MCP tools (51 read, 59 write) to query and fully configure Wildwood apps — including AI providers, auth, payments, themes, CAPTCHA, tiers, add-ons, subscriptions, feedback, consent, third-party scripts, the seeder, app hosting, and database hosting. All write tools require `confirm: true` and auto-snapshot before changes. Run `/wildwood` for the full tool reference and all platform workflows.
+This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io/mcp`. On first connection, a browser window opens for OAuth login at WildwoodAdmin. After authentication, Claude can use 111 MCP tools (51 read, 60 write) to query and fully configure Wildwood apps — including AI providers, auth, payments, themes, CAPTCHA, tiers, add-ons, subscriptions, feedback, consent, third-party scripts, the seeder, app hosting, and database hosting. All write tools require `confirm: true` and auto-snapshot before changes. Run `/wildwood` for the full tool reference and all platform workflows.
 
 ## SDK Packages
 

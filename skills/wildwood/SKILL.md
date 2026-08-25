@@ -1166,8 +1166,10 @@ Returns `{ deployment, workload, note }`. `workload` is live cluster state:
 If the cluster cannot be reached, `workload` is `null` and `note` explains why; the stored
 deployment record is still returned.
 
-Once `Running`, visit `https://{slug}.wildwoodapps.io` and test: the app loads, client-side routes
-resolve, WildwoodComponents work (auth flow, styling, API calls).
+Once `Running`, visit the `url` on the returned `deployment` and test: the app loads, client-side
+routes resolve, WildwoodComponents work (auth flow, styling, API calls). Use that field rather than
+assembling `https://{slug}.wildwoodapps.io` yourself — on staging the platform prefixes the slug
+with `stg-`, so a hand-built URL points at a hostname that does not exist.
 
 ## Deploy Step 8: Failure Paths
 
@@ -1401,9 +1403,23 @@ pricing.
 | `HOSTING_CUSTOM_DOMAIN_COUNT` | limit | Custom domains per company |
 
 Bandwidth is metered against `HOSTING_BANDWIDTH_GB` and enforced automatically: the platform warns
-a company's admins at 80% of the monthly allowance and **stops its sites at 150%**. A company can be
-exempted with a `HOSTING_BANDWIDTH_UNMETERED` feature override
-(`wildwood_set_feature_override`) — it belongs to no tier, by design.
+a company's admins at 80% of the monthly allowance and **stops its sites at 150%**.
+
+A company can be exempted with a `HOSTING_BANDWIDTH_UNMETERED` feature override, which belongs to no
+tier by design. **Granting it is a Wildwood-operator action, not something you can do from here** —
+`wildwood_set_feature_override` cannot write it. The exemption has to be recorded against
+(app `wildwood-admin`, the *customer's* company id), and the MCP tool takes both ids from the
+caller's own token, so it can only ever write the override for the caller's own company against
+their own app. Ask Wildwood support; internally it is a platform-admin call:
+
+```
+POST /api/app-tiers/wildwood-admin/admin/feature-overrides
+{ "featureCode": "HOSTING_BANDWIDTH_UNMETERED", "isEnabled": true,
+  "targetCompanyId": "<customer company id>", "reason": "..." }
+```
+
+`targetCompanyId` is refused for anyone who is not a platform admin. It is revoked by re-posting the
+same override with `"isEnabled": false`.
 
 Package ceilings are platform-wide, not tier-based: 100 MB zip, 10,000 entries, 500 MB
 uncompressed.
