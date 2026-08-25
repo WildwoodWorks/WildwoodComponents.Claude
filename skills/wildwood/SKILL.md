@@ -1089,10 +1089,11 @@ Validation runs before a single byte is stored, so a rejected package changes no
 | Per-entry compression ratio | 100× |
 | Path traversal (`..`) or absolute paths | rejected |
 
-Blocked files — the deploy fails with `Blocked file detected in zip` if any entry ends in
-**`.env`**, **`.pem`** or **`.key`**, or is named **`web.config`**. The platform's blocked list
-also names **`appsettings.*.json`**, so treat environment-specific .NET config files as
-unshippable regardless of whether a given build is caught.
+Blocked files — the deploy fails with `Blocked file detected in zip` if any entry's **file name**
+ends in **`.env`**, **`.pem`** or **`.key`**, is exactly **`web.config`**, or matches
+**`appsettings.*.json`** — so `appsettings.Production.json` is rejected while a plain
+`appsettings.json` of non-secret defaults still ships. The rules are matched against the file name
+rather than the path, so a nested `config/.env` is caught the same as one at the zip root.
 
 Secrets belong in deployment environment variables, never in the artifact. Do not try to work
 around a block by renaming the file — the point is that the artifact is stored and unpacked into a
