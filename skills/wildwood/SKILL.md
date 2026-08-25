@@ -1267,9 +1267,9 @@ tool reference and the lifecycle operations.
 | `hosting_deployment_deploy(deploymentId, uploadId, confirm)` | Step 2 of deploying. Publishes an already-uploaded package, waits for the rollout. The package size is checked **before** it is downloaded, so an oversized upload is refused rather than deployed. |
 | `hosting_set_env_vars(deploymentId, envVars, confirm)` | **Replaces** the site's environment variables (encrypted at rest, never read back). Applied on the **next deploy or rollback**, not immediately. See [Environment Variables](#environment-variables). |
 | `hosting_deployment_start(deploymentId, confirm)` | Scales back up. **Only a `Stopped` site that already has a deployed artifact.** |
-| `hosting_deployment_stop(deploymentId, confirm)` | Scales to zero, keeps the artifact. **Only an `Active` site.** |
+| `hosting_deployment_stop(deploymentId, confirm)` | Scales to zero, keeps the artifact. **An `Active` or `Failed` site** — a failed site's container is often still running. |
 | `hosting_deployment_rollback(deploymentId, confirm)` | Back one version, `v{N}` → `v{N-1}`, and waits for the rollout. |
-| `hosting_deployment_delete(deploymentId, confirm)` | Removes the workload, every artifact version and the record. The slug becomes claimable again. Irreversible. |
+| `hosting_deployment_delete(deploymentId, confirm)` | Removes the workload, every artifact version and the record. The slug becomes claimable again. Irreversible. A site that is mid-build or mid-deploy is refused — wait for the deploy to finish, then delete. |
 | `hosting_domain_add(deploymentId, domain, confirm)` | Records a custom domain — see the note below. |
 | `hosting_domain_remove(domainId, confirm)` | Removes it; the site stays reachable at its `wildwoodapps.io` address. |
 
@@ -1310,8 +1310,11 @@ no serving image and is refused explicitly.
 Stop and start are **scale operations**, not redeploys — the artifact and version are untouched, so
 a stopped site comes straight back up on the same build.
 
-- `hosting_deployment_stop` requires status **Active**. A Pending, Failed or mid-deploy site has no
-  running workload and is refused.
+- `hosting_deployment_stop` accepts status **Active or Failed**. A failed site's container is often
+  still running — a rollout that never became ready, a pod that crashlooped after serving — so
+  stopping it is how a broken site is taken off the air. A **Pending** site has never had a workload,
+  and a site that is mid-build, mid-deploy or being deleted belongs to that operation; both are
+  refused.
 - `hosting_deployment_start` requires status **Stopped** *and* an already-deployed artifact. A site
   that has never been deployed cannot be started — deploy it instead.
 
@@ -1657,8 +1660,10 @@ Use MCP tools to gather:
 ### App Hosting
 - `hosting_deployment_list` — List all hosted deployments
 - Show: Name, slug, status, framework, URL. Deployment statuses are `Pending`, `Building`,
-  `Deploying`, `Active`, `Failed`, `Stopped` — a serving site is **`Active`**. (`Running` is the
-  *workload* phase reported by `hosting_deployment_get`, which is a different vocabulary.)
+  `Deploying`, `Active`, `Failed`, `Stopped`, `Deleting` — a serving site is **`Active`**. (`Running`
+  is the *workload* phase reported by `hosting_deployment_get`, which is a different vocabulary.)
+  `Deleting` is transient: a site whose delete is in flight. A site left sitting in it means a delete
+  died half-way — deleting it again is the recovery, and is allowed.
 
 ### Database Hosting
 - `database_hosting_list` — List all hosted databases
@@ -1903,7 +1908,7 @@ All write tools require `confirm: true` and auto-snapshot before changes.
 | `hosting_set_env_vars` | Replace a deployment's environment variables (encrypted; applied on the next deploy) |
 | `hosting_deployment_deploy` | Publish an uploaded package by `uploadId` (step 2 of deploying) |
 | `hosting_deployment_start` | Start a Stopped deployment that has a deployed artifact |
-| `hosting_deployment_stop` | Scale an Active deployment to zero, keeping its artifact |
+| `hosting_deployment_stop` | Scale an Active or Failed deployment to zero, keeping its artifact |
 | `hosting_deployment_rollback` | Roll a deployment back one version (v{N} → v{N-1}) |
 | `hosting_deployment_delete` | Delete a deployment, its artifacts and its workload |
 | `hosting_domain_add` | Record a custom domain (routing lands in v1.1) |
