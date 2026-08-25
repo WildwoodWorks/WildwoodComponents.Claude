@@ -978,10 +978,12 @@ Tell the user what was detected and which runtime it maps to, and confirm before
    `/wildwood integrate`; if present, scan for design token drift and offer to auto-fix.
 4. **Environment variables.** Identify what the app needs — Wildwood SDK config
    (`VITE_WILDWOOD_API_URL`, `VITE_WILDWOOD_APP_ID`, or the framework equivalent) plus anything in
-   `.env` / `.env.example`. For a client-side build these are baked in at build time. For NodeJs
-   and DotNet they are supplied to the running container from the deployment's environment
-   variables, which are set in **WildwoodAdmin > Hosting > Deployments** (there is no MCP tool for
-   them yet). **Never put secrets in the zip** — see the blocked-file rules in Step 4.
+   `.env` / `.env.example`. For a client-side build (Static/React) these are baked in at build time
+   and Wildwood never sees them. For NodeJs and DotNet they are supplied to the running container
+   from the deployment's environment variables — set them with
+   `hosting_set_env_vars(deploymentId, envVars, confirm: true)` **before** the deploy that should
+   pick them up (see [Environment Variables](#environment-variables)).
+   **Never put secrets in the zip** — see the blocked-file rules in Step 4.
 
 ## Deploy Step 3: Claim a Slug and Create the Deployment
 
@@ -997,6 +999,8 @@ and suggested alternatives.
 
 The `url` field is only present when the slug is available, and it reflects the **effective** slug
 — on staging the platform prefixes `stg-`, so trust the returned URL rather than assembling one.
+That prefix also eats into the length: the stored slug must fit 50 characters *including* it, so
+**on staging the ceiling is 46**, not 50. The rejection message states the applicable maximum.
 
 Then create the hosting slot:
 
@@ -1010,6 +1014,8 @@ hosting_deployment_create(
                                  // REQUIRED for DotNet, unused for Static/React
   buildCommand: "npm run build", // recorded for reference only — never executed
   outputDirectory: "dist",       // the folder whose CONTENTS you zip
+  containerSize: 0,              // optional: 0=Small (default), 1=Medium, 2=Large, 3=XL
+                                 // Large/XL need HOSTING_LARGE_CONTAINERS
   confirm: true
 )
 ```
@@ -1170,7 +1176,8 @@ resolve, WildwoodComponents work (auth flow, styling, API calls).
 | `"A deployment is already in progress for this site."` | Only one deploy or rollback per site runs at a time; a second is **refused, not queued**. The staged upload is consumed anyway — call `hosting_get_upload_url` and upload again before retrying. |
 | `"No uploaded package found for uploadId ..."` | The 15-minute URL expired, the upload never completed, or that upload was already deployed. Get a fresh upload URL and re-upload. |
 | `"Invalid uploadId"` | It must be the 32-character hex id returned by `hosting_get_upload_url`. |
-| `"Blocked file detected in zip"` | A `.env` / `.pem` / `.key` / `web.config` / `appsettings.*.json` file is in the archive. Remove it and move the values into deployment environment variables. |
+| Deploy fails immediately, before any rollout, with `"Deployment failed. Contact support if the issue persists."` | The package was refused by validation and **nothing was uploaded**. The server deliberately does not echo the reason to the client, so check the package yourself: a `.env` / `.pem` / `.key` / `web.config` / `appsettings.*.json` entry (see the blocked-file rules above), a zip over 100 MB or 10,000 entries, or a `..` path. Remove the offending file and move its values into `hosting_set_env_vars`. |
+| `"The uploaded package is N MB, which exceeds the 100 MB limit"` | Refused before it was even downloaded, and the staged upload is discarded. Trim the build — drop source maps, `node_modules` and bundled media — and upload again with a fresh `hosting_get_upload_url`. |
 | Deploy succeeds, site returns 404s or a blank page | Almost always the zip-root rule (Step 4). Check `unzip -l site.zip`. |
 | Deploy succeeds, site behaves wrong or crashes | `hosting_deployment_logs(deploymentId: "...", source: "runtime")` — the last ~200 lines of the container's own output. |
 | Rollout failed | `hosting_deployment_logs(deploymentId: "...", source: "build")` — the platform's deploy history including the failure message. |
@@ -1181,8 +1188,8 @@ To undo a bad deploy: `hosting_deployment_rollback(deploymentId: "...", confirm:
 
 ## Deploy Step 9: Report
 
-Report: the live URL, the runtime, the deployed version number, `workload.phase`, and where
-environment variables were set.
+Report: the live URL, the runtime, the container size, the deployed version number,
+`workload.phase`, and the NAMES of the environment variables set (never their values).
 
 ---
 
@@ -1254,8 +1261,9 @@ tool reference and the lifecycle operations.
 
 | Tool | Notes |
 |------|-------|
-| `hosting_deployment_create(appId, slug, runtime, ...)` | Creates the slot, **Pending**, serving nothing. `runtime` is `1`=Static, `2`=React, `3`=NodeJs, `4`=DotNet. |
-| `hosting_deployment_deploy(deploymentId, uploadId, confirm)` | Step 2 of deploying. Publishes an already-uploaded package, waits for the rollout. |
+| `hosting_deployment_create(appId, slug, runtime, ...)` | Creates the slot, **Pending**, serving nothing. `runtime` is `1`=Static, `2`=React, `3`=NodeJs, `4`=DotNet. Optional `containerSize`: `0`=Small (default), `1`=Medium, `2`=Large, `3`=XL — Large/XL need `HOSTING_LARGE_CONTAINERS`. |
+| `hosting_deployment_deploy(deploymentId, uploadId, confirm)` | Step 2 of deploying. Publishes an already-uploaded package, waits for the rollout. The package size is checked **before** it is downloaded, so an oversized upload is refused rather than deployed. |
+| `hosting_set_env_vars(deploymentId, envVars, confirm)` | **Replaces** the site's environment variables (encrypted at rest, never read back). Applied on the **next deploy or rollback**, not immediately. See [Environment Variables](#environment-variables). |
 | `hosting_deployment_start(deploymentId, confirm)` | Scales back up. **Only a `Stopped` site that already has a deployed artifact.** |
 | `hosting_deployment_stop(deploymentId, confirm)` | Scales to zero, keeps the artifact. **Only an `Active` site.** |
 | `hosting_deployment_rollback(deploymentId, confirm)` | Back one version, `v{N}` → `v{N-1}`, and waits for the rollout. |
@@ -1275,22 +1283,25 @@ hosting_deployment_create(
                                  // REQUIRED for DotNet, unused for Static/React
   buildCommand: "npm run build", // reference only — never executed server-side
   outputDirectory: "dist",
+  containerSize: 0,              // optional: 0=Small (default), 1=Medium, 2=Large, 3=XL
   confirm: true
 )
 ```
 
-An out-of-range `runtime` is rejected up front. Python is a declared runtime with no serving image
-and is refused explicitly.
+An out-of-range `runtime` or `containerSize` is rejected up front. Python is a declared runtime with
+no serving image and is refused explicitly.
 
 ## Workflow: Deploy a New App
 
 1. Check features and limits (`APP_HOSTING`, plus `HOSTING_NODEJS`/`HOSTING_DOTNET`)
 2. `hosting_check_slug(slug: "my-app")`
 3. `hosting_deployment_create(...)` — see the runtime table above
-4. Build locally and zip the **contents** of the output directory (see [Deploy](#deploy) Step 4)
-5. `hosting_get_upload_url(deploymentId)` → run the returned `curlExample` to PUT the zip
-6. `hosting_deployment_deploy(deploymentId, uploadId, confirm: true)`
-7. `hosting_deployment_get(deploymentId)` until `workload.phase` is `Running`, then visit the URL
+4. For NodeJs/DotNet: `hosting_set_env_vars(deploymentId, envVars, confirm: true)` — BEFORE the
+   deploy, since variables are only applied during a rollout
+5. Build locally and zip the **contents** of the output directory (see [Deploy](#deploy) Step 4)
+6. `hosting_get_upload_url(deploymentId)` → run the returned `curlExample` to PUT the zip
+7. `hosting_deployment_deploy(deploymentId, uploadId, confirm: true)`
+8. `hosting_deployment_get(deploymentId)` until `workload.phase` is `Running`, then visit the URL
 
 ## Start / Stop Guards
 
@@ -1328,12 +1339,49 @@ put the site behind your own CDN/proxy pointing at that hostname.
 ## Environment Variables
 
 A deployment's environment variables are delivered to the running container (NodeJs and DotNet;
-Static/React are already built). They are set in **WildwoodAdmin > Hosting > Deployments** — there
-is no MCP tool for them yet.
+Static/React are already built, so their configuration must be baked in at build time instead).
+
+```
+hosting_set_env_vars(
+  deploymentId: "...",
+  envVars: { "DATABASE_URL": "Host=...;Port=5432;...", "NODE_ENV": "production" },
+  confirm: true
+)
+```
+
+Four things to know:
+
+- **It REPLACES the whole set.** Pass every variable the site needs, not just the changed ones;
+  `{}` clears them all. There is no per-key edit.
+- **Names are restricted** to letters, digits, `-`, `_` and `.` — each one becomes a key of the
+  site's Kubernetes Secret, which allows nothing else. An invalid name is refused by the tool, by
+  name, rather than failing a later deploy.
+- **Values are encrypted at rest** and never read back: the tool answers with the variable *names*
+  and a count, never the values.
+- **They take effect on the NEXT DEPLOY OR ROLLBACK — not immediately.** The site's Secret is
+  written during a rollout, and a container reads its environment once at start. Setting variables
+  on a running site changes nothing until you deploy again (`hosting_get_upload_url` →
+  `hosting_deployment_deploy`). Set them *before* the deploy that should use them.
 
 The platform's own wiring wins over yours: `PORT=8080` for NodeJs and
 `ASPNETCORE_URLS=http://+:8080` for DotNet are applied last, because the container port, Service
 and network policy all hard-code 8080.
+
+## Container Size
+
+Every site runs `Small` (0.25 vCPU / 0.5 GB) unless told otherwise. Pass `containerSize` to
+`hosting_deployment_create`, or `PUT /api/hosting/deployments/{id}` to change it later:
+
+| Value | Size | CPU / memory limit | Gated by |
+|-------|------|--------------------|----------|
+| `0` | Small (default) | 0.25 vCPU / 0.5 GB | — |
+| `1` | Medium | 0.5 vCPU / 1 GB | — |
+| `2` | Large | 1 vCPU / 2 GB | `HOSTING_LARGE_CONTAINERS` |
+| `3` | XL | 2 vCPU / 4 GB | `HOSTING_LARGE_CONTAINERS` |
+
+Like environment variables, a size change **takes effect on the next deploy** — the resource
+envelope lives in the pod template, which is rewritten during a rollout. Moving *down* a size is
+always allowed; moving *up* into Large/XL is re-checked against the feature every time.
 
 ## Tier Features and Limits
 
@@ -1346,10 +1394,16 @@ pricing.
 | `APP_HOSTING` | feature | Access to hosting at all |
 | `HOSTING_NODEJS` | feature | Creating a NodeJs (`3`) deployment |
 | `HOSTING_DOTNET` | feature | Creating a DotNet (`4`) deployment |
+| `HOSTING_LARGE_CONTAINERS` | feature | `containerSize` Large (`2`) and XL (`3`) |
 | `HOSTING_APP_COUNT` | limit | Number of hosted sites |
 | `HOSTING_STORAGE_MB` | limit | Artifact storage, checked on every deploy |
 | `HOSTING_BANDWIDTH_GB` | limit | Monthly bandwidth |
 | `HOSTING_CUSTOM_DOMAIN_COUNT` | limit | Custom domains per company |
+
+Bandwidth is metered against `HOSTING_BANDWIDTH_GB` and enforced automatically: the platform warns
+a company's admins at 80% of the monthly allowance and **stops its sites at 150%**. A company can be
+exempted with a `HOSTING_BANDWIDTH_UNMETERED` feature override
+(`wildwood_set_feature_override`) — it belongs to no tier, by design.
 
 Package ceilings are platform-wide, not tier-based: 100 MB zip, 10,000 entries, 500 MB
 uncompressed.
@@ -1453,8 +1507,10 @@ exceeding it produces connection refusals rather than a throttle. Elastic additi
    gets the same transitions pushed live over SignalR; via MCP you poll.)
 5. `database_hosting_get_connection(databaseId)` — returns Npgsql format:
    `Host=...;Port=5432;Database=...;Username=...;Password=...`
-6. Store it as an environment variable on the hosted deployment
-   (WildwoodAdmin > Hosting > Deployments) — never in the deployed zip, which rejects `.env` files
+6. Store it as an environment variable on the hosted deployment —
+   `hosting_set_env_vars(deploymentId, envVars: { "DATABASE_URL": "<the connection string>" }, confirm: true)`
+   — never in the deployed zip, which rejects `.env` files. Remember it replaces the whole set, and
+   that the site only picks it up on its **next deploy**
 
 ## Connecting From Your App
 
@@ -1584,7 +1640,9 @@ Use MCP tools to gather:
 
 ### App Hosting
 - `hosting_deployment_list` — List all hosted deployments
-- Show: Name, slug, status (Running/Stopped), framework, URL
+- Show: Name, slug, status, framework, URL. Deployment statuses are `Pending`, `Building`,
+  `Deploying`, `Active`, `Failed`, `Stopped` — a serving site is **`Active`**. (`Running` is the
+  *workload* phase reported by `hosting_deployment_get`, which is a different vocabulary.)
 
 ### Database Hosting
 - `database_hosting_list` — List all hosted databases
@@ -1625,7 +1683,7 @@ Components:
   Subscriptions:  Enabled/Disabled
 
 Hosting:
-  Deployments: {count} ({running} running)
+  Deployments: {count} ({active} active)
   Databases:   {count} ({active} active, {totalMB}MB used)
 
 Usage (Last 30 Days):
@@ -1726,7 +1784,7 @@ const client = createWildwoodClient({ apiUrl, appId, platform? });
 - Login response: `{ jwtToken, email, firstName, ... }` (no `token` alias, no `user` sub-object)
 - DTO naming: PascalCase (Email, Password, AppId)
 
-## MCP Tools (110 total: 51 read, 59 write)
+## MCP Tools (111 total: 51 read, 60 write)
 
 All write tools require `confirm: true` and auto-snapshot before changes.
 
@@ -1784,7 +1842,7 @@ All write tools require `confirm: true` and auto-snapshot before changes.
 | `database_hosting_get_connection` | Npgsql connection string (in-cluster reachable only) |
 | `database_hosting_backup_list` | List `pg_dump` archive backups |
 
-### Write Tools (59)
+### Write Tools (60)
 
 | Tool | Description |
 |------|-------------|
@@ -1825,7 +1883,8 @@ All write tools require `confirm: true` and auto-snapshot before changes.
 | `wildwood_set_api_credentials` | Set/rotate a provider's credentials and auth scheme |
 | `wildwood_generate_mcp_tools` | Generate MCP tools from the provider's spec |
 | `wildwood_manage_mcp_wrap` | Enable/disable the public MCP wrap, metadata, tokens |
-| `hosting_deployment_create` | Create a new hosted deployment slot (runtime 1=Static, 2=React, 3=NodeJs, 4=DotNet) |
+| `hosting_deployment_create` | Create a new hosted deployment slot (runtime 1=Static, 2=React, 3=NodeJs, 4=DotNet; optional containerSize 0=Small…3=XL) |
+| `hosting_set_env_vars` | Replace a deployment's environment variables (encrypted; applied on the next deploy) |
 | `hosting_deployment_deploy` | Publish an uploaded package by `uploadId` (step 2 of deploying) |
 | `hosting_deployment_start` | Start a Stopped deployment that has a deployed artifact |
 | `hosting_deployment_stop` | Scale an Active deployment to zero, keeping its artifact |
