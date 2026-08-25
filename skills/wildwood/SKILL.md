@@ -37,9 +37,9 @@ What would you like to do?
 
 1. Setup      — Create account, connect MCP, configure your first app
 2. Integrate  — Add Wildwood SDK to your project (auth, AI, payments, etc.)
-3. Deploy     — Build and deploy your app to a hosting service
+3. Deploy     — Build and deploy your app to Wildwood hosting
 4. Hosting    — Manage Wildwood-hosted app deployments
-5. Database   — Provision and manage hosted Azure SQL databases
+5. Database   — Provision and manage hosted PostgreSQL databases
 6. Status     — Check platform health, app status, and usage
 7. Diagnose   — Troubleshoot MCP connection / OAuth issues
 
@@ -411,19 +411,30 @@ For any unconfigured features they want, configure them via MCP tools or direct 
 
 ## Setup Step 6: Database Hosting (Optional)
 
-If the user's app needs a managed database, introduce Wildwood's hosted Azure SQL databases:
+If the user's app needs a managed database, introduce Wildwood's hosted **PostgreSQL 16**
+databases:
 
-1. **Check eligibility**: Database hosting requires **Professional** tier or higher (`DB_HOSTING` feature)
-2. **Provision a database**: Use `database_hosting_create` MCP tool or WildwoodAdmin > Hosting > Databases
-3. **Get connection string**: Once status is `Active`, use `database_hosting_get_connection` to retrieve it
-4. **Configure your app**: Add the connection string to your app's environment variables
+1. **Check the fit first.** In v1 a hosted database is reachable **only from inside the cluster** —
+   that is, from apps running on Wildwood hosting. It cannot be reached from a developer
+   workstation or an app hosted elsewhere. Say so before provisioning anything.
+2. **Check eligibility**: requires the `DB_HOSTING` feature, plus `DB_HOSTING_ELASTIC_POOL` for the
+   Elastic tier, within the `DB_HOSTED_COUNT` and `DB_STORAGE_MB` limits.
+3. **Provision**: `database_hosting_create` via MCP, or WildwoodAdmin > Hosting > Databases.
+   PostgreSql is the only engine; `SqlServer` is rejected.
+4. **Get the connection string**: once status is `Active`, `database_hosting_get_connection`
+   returns Npgsql format (`Host=...;Port=...;Database=...;Username=...;Password=...`).
+5. **Configure the app**: set it as an environment variable on the hosted deployment — never in a
+   committed config file or in the deployed zip.
 
-**Tier limits:**
-| Tier | Databases | Storage |
-|------|-----------|---------|
-| Professional | 1 | 500 MB |
-| Business | 5 | 5 GB |
-| Enterprise | Unlimited | Unlimited |
+**Tiers:**
+| Tier | Storage | Concurrent connections |
+|------|---------|------------------------|
+| Basic | 2 GB | 10 |
+| Standard | 10 GB | 25 |
+| Elastic | 25 GB | 50 |
+
+Per-tier database counts and storage allowances come from the company's tier configuration — read
+them with `wildwood_list_app_tiers` or in WildwoodAdmin. Full detail: `/wildwood database`.
 
 ## Setup Step 7: Next Steps
 
@@ -911,356 +922,613 @@ If you discover a bug in a WildwoodComponent during integration or testing, **fi
 
 # Deploy
 
-Help the user build and deploy their application to a hosting platform.
+Build the user's app and publish it to **Wildwood hosting** — the default path. The app ends up
+live at `https://{slug}.wildwoodapps.io`, managed entirely through MCP tools, with no other
+provider account required.
 
-## Deploy Step 1: Framework Detection
+Wildwood hosting runs each site as a container on Wildwood's own cluster. **It does not build your
+code.** You build locally, zip the build output, and upload the zip; the platform unpacks it into
+the container and serves it. `buildCommand` and `outputDirectory` are recorded on the deployment
+for reference only — nothing runs them server-side.
 
-Auto-detect the project type from the current working directory:
+If the user explicitly wants a different provider, or their stack is one Wildwood does not run
+(Python, Go, Ruby, a custom Dockerfile), jump to
+[Alternative: Other Hosting Platforms](#alternative-other-hosting-platforms).
 
-| Indicator | Runtime | Recommended Hosts |
-|-----------|---------|-------------------|
-| `package.json` with `vite` or `react` | React (Vite) | Vercel, Netlify, Cloudflare Pages |
-| `package.json` with `next` | Next.js | Vercel, Netlify, AWS Amplify |
-| `package.json` with `express` | Node.js (Express) | Railway, Fly.io, Render |
-| `package.json` with `nuxt` or `vue` | Vue/Nuxt | Vercel, Netlify, Cloudflare Pages |
-| `package.json` with `svelte` | SvelteKit | Vercel, Netlify, Cloudflare Pages |
-| `*.csproj` with Blazor SDK | .NET (Blazor WASM) | Azure Static Web Apps, Cloudflare Pages |
-| `*.csproj` with Web SDK | ASP.NET Core | Azure App Service, Railway, Fly.io |
-| `Dockerfile` | Containerized | Fly.io, Railway, Azure Container Apps |
+## Deploy Step 1: Detect the Framework and Map It to a Runtime
 
-Tell the user what was detected and confirm.
+Auto-detect the project type from the current working directory, then map it to a Wildwood runtime.
+The runtime is an **integer** on `hosting_deployment_create`:
 
-## Deploy Step 2: Choose Hosting Platform
+| Runtime | Value | Container | Serves |
+|---------|-------|-----------|--------|
+| Static | `1` | nginx | Files from the zip, with `index.html` fallback for unknown paths |
+| React (SPA) | `2` | nginx | Same as Static — the label records intent |
+| NodeJs | `3` | `node:22-alpine` | Runs `node <entryPoint>` (default `server.js`) |
+| DotNet | `4` | `mcr.microsoft.com/dotnet/aspnet:10.0` | Runs `dotnet /workspace/<entryPoint>` |
 
-### Static / Frontend Apps
+Detection table:
 
-| Platform | Free Tier | Best For | CLI |
-|----------|-----------|----------|-----|
-| **Vercel** | Yes | React, Next.js, frontend | `npx vercel` |
-| **Netlify** | Yes | Static sites, JAMstack | `npx netlify-cli deploy` |
-| **Cloudflare Pages** | Yes — unlimited BW | Global performance | `npx wrangler pages deploy` |
-| **GitHub Pages** | Yes — public repos | Simple static sites | `gh-pages` or Actions |
-| **Azure Static Web Apps** | Yes | Blazor WASM, enterprise | `swa deploy` |
+| Indicator | Runtime | Value | What to ship |
+|-----------|---------|-------|--------------|
+| `package.json` with `vite`, `react`, `vue`, `svelte` (SPA build) | React | `2` | Contents of `dist/` (or `build/`) |
+| Plain HTML/CSS/JS, or a static-site generator | Static | `1` | Contents of the output folder |
+| `package.json` with `express`, `fastify`, `koa`, `hono` | NodeJs | `3` | App **plus** production `node_modules` |
+| `package.json` with `next`, `nuxt` (SSR mode) | NodeJs | `3` | A self-contained server build — see the Node.js notes below |
+| `package.json` with `next`/`nuxt` exporting a fully static site | Static | `1` | Contents of `out/` (or `.output/public`) |
+| `*.csproj` — Blazor WebAssembly | Static | `1` | Contents of `publish/wwwroot/` |
+| `*.csproj` — ASP.NET Core or Blazor **Server** | DotNet | `4` | Contents of `publish/`, `entryPoint` = the app `.dll` |
+| `Dockerfile`, Python, Go, Ruby, PHP | *not supported* | — | Use the alternative platforms section |
 
-### Backend / Full-Stack Apps
+Python is a declared runtime with **no serving image** — `hosting_deployment_create` rejects it
+explicitly. Only `1`, `2`, `3` and `4` are accepted.
 
-| Platform | Free Tier | Best For | CLI |
-|----------|-----------|----------|-----|
-| **Railway** | $5 credit/mo | Node.js, quick deploy | `railway up` |
-| **Fly.io** | Yes — small VMs | Containers, .NET | `fly deploy` |
-| **Render** | Yes — limited | Node.js, auto-deploy | Dashboard |
-| **Azure App Service** | Yes — limited | .NET, enterprise | `az webapp up` |
+Tell the user what was detected and which runtime it maps to, and confirm before continuing.
 
-If no preference: **Vercel** for frontend, **Railway** for backend, **Fly.io** for .NET.
+## Deploy Step 2: Pre-Flight Checks
 
-## Deploy Step 3: Pre-Deploy Style Check
+1. **MCP connection active** — run `/wildwood setup` if not.
+2. **Tier features.** Deployment creation is refused without them:
+   - `APP_HOSTING` — required for every hosted site
+   - `HOSTING_NODEJS` — additionally required for runtime `3`
+   - `HOSTING_DOTNET` — additionally required for runtime `4`
+   - `HOSTING_APP_COUNT` — the limit on how many sites the company may have
+3. **Style check.** If WildwoodComponents are installed, check for a theme override file
+   (`wildwood-theme.css`, `wildwoodTheme.ts`, `wildwood-overrides.css`). If missing, suggest
+   `/wildwood integrate`; if present, scan for design token drift and offer to auto-fix.
+4. **Environment variables.** Identify what the app needs — Wildwood SDK config
+   (`VITE_WILDWOOD_API_URL`, `VITE_WILDWOOD_APP_ID`, or the framework equivalent) plus anything in
+   `.env` / `.env.example`. For a client-side build these are baked in at build time. For NodeJs
+   and DotNet they are supplied to the running container from the deployment's environment
+   variables, which are set in **WildwoodAdmin > Hosting > Deployments** (there is no MCP tool for
+   them yet). **Never put secrets in the zip** — see the blocked-file rules in Step 4.
 
-If WildwoodComponents are installed, verify styling consistency before building:
+## Deploy Step 3: Claim a Slug and Create the Deployment
 
-1. Check for theme override file (`wildwood-theme.css`, `wildwoodTheme.ts`, `wildwood-overrides.css`)
-2. If missing, warn and suggest `/wildwood integrate` to generate a matching theme
-3. If present, scan for design token drift and offer to auto-fix
-
-## Deploy Step 4: Environment Variables
-
-Identify required environment variables:
-
-1. **Wildwood SDK config**: `VITE_WILDWOOD_API_URL`, `VITE_WILDWOOD_APP_ID` (or framework equivalents)
-2. **Other env vars**: Scan `.env`, `.env.example`, `.env.local`
-3. **Secrets**: Warn never to commit API keys — set them in the hosting platform
-
-## Deploy Step 5: Build Locally
-
-| Runtime | Build Command | Output Directory |
-|---------|--------------|-----------------|
-| React (Vite) | `npm install && npm run build` | `dist/` |
-| Next.js | `npm install && npm run build` | `.next/` or `out/` |
-| SvelteKit | `npm install && npm run build` | `build/` |
-| Node.js (Express) | `npm install` | `.` |
-| .NET (Blazor WASM) | `dotnet publish -c Release` | `bin/Release/net*/publish/wwwroot/` |
-| .NET (ASP.NET Core) | `dotnet publish -c Release` | `bin/Release/net*/publish/` |
-
-## Deploy Step 6: Deploy
-
-Follow the platform-specific deployment flow:
-
-### Vercel
-```bash
-npm i -g vercel && vercel --prod
 ```
-- Env vars: `vercel env add VARIABLE_NAME`
-- Custom domain: `vercel domains add yourdomain.com`
-
-### Netlify
-```bash
-npm i -g netlify-cli && netlify login && netlify init && netlify deploy --dir=dist --prod
-```
-- Add `_redirects` file for SPA routing: `/* /index.html 200`
-
-### Cloudflare Pages
-```bash
-npm i -g wrangler && wrangler login && wrangler pages deploy dist --project-name=my-app
+hosting_check_slug(slug: "my-app")
 ```
 
-### Railway
-```bash
-npm i -g @railway/cli && railway login && railway init && railway up
-```
-- Env vars: `railway variables set KEY=value`
+Returns `{ slug, available: { available, reason, suggestions }, url }`. Rules: 3–50 characters,
+lowercase alphanumeric with single hyphens, starting and ending alphanumeric. Platform names
+(`www`, `api`, `admin`, `app`, `apps`, `docs`, `status`, `login`, `auth`, `mcp`, `cdn`, `portal`,
+`console`, …) are reserved, as is the `stg-` prefix. An unavailable slug comes back with a reason
+and suggested alternatives.
 
-### Fly.io
-```bash
-fly auth login && fly launch && fly deploy
-```
-- Secrets: `fly secrets set KEY=value`
+The `url` field is only present when the slug is available, and it reflects the **effective** slug
+— on staging the platform prefixes `stg-`, so trust the returned URL rather than assembling one.
 
-### Azure Static Web Apps (Blazor WASM)
-```bash
-npm i -g @azure/static-web-apps-cli && swa login && swa deploy bin/Release/net*/publish/wwwroot/
-```
+Then create the hosting slot:
 
-### Azure App Service (.NET / Node.js)
-```bash
-az login && az webapp up --name my-app --runtime "DOTNET|9.0"
 ```
-
-### GitHub Pages (Static only)
-```bash
-npm i -D gh-pages && npx gh-pages -d dist
+hosting_deployment_create(
+  appId: "...",
+  slug: "my-app",
+  runtime: 2,                    // 1=Static, 2=React, 3=NodeJs, 4=DotNet
+  framework: "react",            // free-text label
+  entryPoint: null,              // optional for NodeJs (default "server.js"),
+                                 // REQUIRED for DotNet, unused for Static/React
+  buildCommand: "npm run build", // recorded for reference only — never executed
+  outputDirectory: "dist",       // the folder whose CONTENTS you zip
+  confirm: true
+)
 ```
 
-### Git-Based Auto-Deploy
+The site is created **Pending** and serves nothing until a build is deployed. The response carries
+`nextStep` naming the upload call with the new deployment id.
 
-Most platforms support connecting a GitHub repo for automatic deploys on push. Recommend this for ongoing projects.
+## Deploy Step 4: Build Locally and Package the Zip
 
-## Deploy Step 7: Verify Deployment
+### The zip-root rule (gets this wrong most often)
 
-1. Visit the live URL
-2. Test WildwoodComponents if integrated (auth flow, styling, API calls)
-3. Check for common issues: SPA routing 404s, missing env vars, CORS, mixed content
+The platform unpacks the artifact with `unzip -o` straight into `/workspace`, which is the
+container's document root / working directory. **The build output must be at the root of the zip,
+not nested inside a folder.**
 
-## Deploy Step 8: Report
+```bash
+# Correct — contents at the zip root
+cd dist && zip -r ../site.zip . && cd ..
 
-Report: live URL, platform used, auto-deploy status, env vars configured.
+# Wrong — creates site.zip containing a "dist/" folder; the site serves nothing
+zip -r site.zip dist
+```
+
+```powershell
+# PowerShell equivalent — note the \* which packs the CONTENTS
+Compress-Archive -Path dist\* -DestinationPath site.zip -Force
+```
+
+Verify before uploading: `unzip -l site.zip | head` must show `index.html` / `server.js` /
+`MyApp.dll` at the top level, with no leading directory component.
+
+### Per-runtime build and packaging
+
+| Runtime | Build | Zip the contents of |
+|---------|-------|---------------------|
+| Static / React (Vite) | `npm ci && npm run build` | `dist/` |
+| Static (Next.js/Nuxt static export) | `npm ci && npm run build` | `out/` or `.output/public/` |
+| NodeJs | `npm ci --omit=dev` | project root, **including `node_modules/`** |
+| DotNet | `dotnet publish -c Release -o publish` | `publish/` |
+| Static (Blazor WASM) | `dotnet publish -c Release -o publish` | `publish/wwwroot/` |
+
+### Node.js notes
+
+- **Dependencies must be in the zip.** Nothing runs `npm install` on the platform. Run
+  `npm ci --omit=dev` locally and include the resulting `node_modules/` in the archive.
+- **Listen on `process.env.PORT`.** The platform sets `PORT=8080` and binds the container port,
+  Service and NetworkPolicy to 8080. That variable is applied *after* the deployment's own
+  environment variables, so it cannot be overridden — an app that hard-codes a different port
+  starts, looks healthy, and is unreachable.
+- **`entryPoint`** defaults to `server.js`. If the app starts from `index.js` or `dist/main.js`,
+  pass that path — it is resolved relative to `/workspace`.
+- Next.js/Nuxt in SSR mode must produce a self-contained server bundle
+  (`output: 'standalone'` for Next.js, `.output/` for Nuxt) whose entry file you name as
+  `entryPoint`, with its dependencies packed alongside.
+
+### .NET notes
+
+- **`entryPoint` is required** and is the application assembly, e.g. `MyApp.dll`. There is no safe
+  default, and creation of the container fails without it.
+- The platform runs `dotnet /workspace/<entryPoint>` and sets `ASPNETCORE_URLS=http://+:8080`; like
+  `PORT`, that value wins over anything the deployment sets.
+- **Configure through environment variables, not environment-specific config files.**
+  `appsettings.*.json` is on the platform's blocked-file list, and config-file reloading is
+  disabled in the container. Keep `appsettings.json` for non-secret defaults and supply
+  per-environment values as deployment environment variables (`ConnectionStrings__Default`,
+  `Logging__LogLevel__Default`, and so on — `__` is the nesting separator).
+
+### Package limits and rejected content
+
+Validation runs before a single byte is stored, so a rejected package changes nothing:
+
+| Rule | Limit |
+|------|-------|
+| Zip size | 100 MB |
+| Entries | 10,000 |
+| Total uncompressed | 500 MB |
+| Per-entry compression ratio | 100× |
+| Path traversal (`..`) or absolute paths | rejected |
+
+Blocked files — the deploy fails with `Blocked file detected in zip` if any entry ends in
+**`.env`**, **`.pem`** or **`.key`**, or is named **`web.config`**. The platform's blocked list
+also names **`appsettings.*.json`**, so treat environment-specific .NET config files as
+unshippable regardless of whether a given build is caught.
+
+Secrets belong in deployment environment variables, never in the artifact. Do not try to work
+around a block by renaming the file — the point is that the artifact is stored and unpacked into a
+container, so anything in it is recoverable.
+
+## Deploy Step 5: Get an Upload URL and Upload the Zip
+
+Uploading goes straight to object storage rather than through the MCP connection — a zip cannot
+travel as JSON.
+
+```
+hosting_get_upload_url(deploymentId: "...")
+```
+
+Returns:
+
+```json
+{
+  "deploymentId": "...",
+  "uploadId": "3f2a...32 hex chars...",
+  "uploadUrl": "https://...presigned...",
+  "expiresInMinutes": 15,
+  "curlExample": "curl -X PUT --upload-file site.zip \"https://...\"",
+  "nextStep": "After the upload finishes, call hosting_deployment_deploy(...)"
+}
+```
+
+**Run the returned `curlExample` verbatim** (substituting your zip's path if it is not
+`site.zip`). Do not add a `Content-Type` header — the URL is signed without one, and adding it
+fails the signature check in a way that looks like a broken URL.
+
+The URL authorizes exactly one object and **expires 15 minutes** after it is issued. Each upload is
+consumed by one deploy, so a repeat deploy needs a fresh `hosting_get_upload_url` call.
+
+## Deploy Step 6: Publish the Upload
+
+```
+hosting_deployment_deploy(deploymentId: "...", uploadId: "...", confirm: true)
+```
+
+Pass the **same `uploadId`** from Step 5. The tool validates the package, stores it as the next
+numbered artifact version, points the site's container workload at it, and **waits for the rollout
+to become ready** before answering.
+
+Response fields: `success`, `alreadyInProgress`, `version`, `url`, `status`, `packageSizeBytes`,
+`message` (the failure reason when the rollout did not come up) and the full `log` entry.
+
+## Deploy Step 7: Verify
+
+```
+hosting_deployment_get(deploymentId: "...")
+```
+
+Returns `{ deployment, workload, note }`. `workload` is live cluster state:
+
+| `workload.phase` | Meaning |
+|------------------|---------|
+| `Running` | The site is up — this is what you are waiting for |
+| `Progressing` | Rollout still in flight; poll again |
+| `Failed` | The container did not come up — go to `hosting_deployment_logs` |
+| `Stopped` | Scaled to zero (see `hosting_deployment_start`) |
+| `NotFound` | No workload exists yet — nothing has been deployed |
+
+If the cluster cannot be reached, `workload` is `null` and `note` explains why; the stored
+deployment record is still returned.
+
+Once `Running`, visit `https://{slug}.wildwoodapps.io` and test: the app loads, client-side routes
+resolve, WildwoodComponents work (auth flow, styling, API calls).
+
+## Deploy Step 8: Failure Paths
+
+| Symptom | Cause and fix |
+|---------|---------------|
+| `"A deployment is already in progress for this site."` | Only one deploy or rollback per site runs at a time; a second is **refused, not queued**. The staged upload is consumed anyway — call `hosting_get_upload_url` and upload again before retrying. |
+| `"No uploaded package found for uploadId ..."` | The 15-minute URL expired, the upload never completed, or that upload was already deployed. Get a fresh upload URL and re-upload. |
+| `"Invalid uploadId"` | It must be the 32-character hex id returned by `hosting_get_upload_url`. |
+| `"Blocked file detected in zip"` | A `.env` / `.pem` / `.key` / `web.config` / `appsettings.*.json` file is in the archive. Remove it and move the values into deployment environment variables. |
+| Deploy succeeds, site returns 404s or a blank page | Almost always the zip-root rule (Step 4). Check `unzip -l site.zip`. |
+| Deploy succeeds, site behaves wrong or crashes | `hosting_deployment_logs(deploymentId: "...", source: "runtime")` — the last ~200 lines of the container's own output. |
+| Rollout failed | `hosting_deployment_logs(deploymentId: "...", source: "build")` — the platform's deploy history including the failure message. |
+| Node app unreachable though the pod is healthy | It is not listening on `process.env.PORT` (8080). |
+| Creation returned an error about features/limits | `APP_HOSTING`, plus `HOSTING_NODEJS` / `HOSTING_DOTNET`, plus the `HOSTING_APP_COUNT` limit. |
+
+To undo a bad deploy: `hosting_deployment_rollback(deploymentId: "...", confirm: true)`.
+
+## Deploy Step 9: Report
+
+Report: the live URL, the runtime, the deployed version number, `workload.phase`, and where
+environment variables were set.
+
+---
+
+## Alternative: Other Hosting Platforms
+
+Use this branch only when the user asks for a specific external provider, or their stack is one
+Wildwood hosting does not run (Python, Go, Ruby, PHP, a custom Dockerfile). These are third-party
+services with their own accounts and billing — Wildwood does not manage them, and none of the MCP
+hosting tools apply.
+
+| Platform | Best for | Deploy |
+|----------|----------|--------|
+| **Vercel** | React, Next.js, frontend | `npm i -g vercel && vercel --prod` |
+| **Netlify** | Static sites, JAMstack | `npm i -g netlify-cli && netlify deploy --dir=dist --prod` |
+| **Cloudflare Pages** | Global static delivery | `npm i -g wrangler && wrangler pages deploy dist --project-name=my-app` |
+| **GitHub Pages** | Simple static sites, public repos | `npm i -D gh-pages && npx gh-pages -d dist` |
+| **Railway** | Node.js, quick full-stack deploy | `npm i -g @railway/cli && railway up` |
+| **Fly.io** | Containers, .NET, any Dockerfile | `fly auth login && fly launch && fly deploy` |
+| **Render** | Node.js with auto-deploy from git | Dashboard |
+
+Notes:
+
+- Env vars: `vercel env add KEY`, `railway variables set KEY=value`, `fly secrets set KEY=value`.
+- SPA routing on Netlify needs a `_redirects` file containing `/* /index.html 200`.
+- Most of these support connecting a GitHub repo for automatic deploys on push — worth recommending
+  for ongoing projects.
+- Build locally first with the same commands as Step 4; these platforms differ in whether they
+  rebuild server-side.
+
+After deploying externally, verify the live URL and check for the usual suspects: SPA routing
+404s, missing env vars, CORS, and mixed content.
 
 ---
 
 # Hosting
 
-Manage app hosting deployments on the Wildwood platform at `apps.wildwoodworks.io`.
+Manage Wildwood-hosted app deployments. Every site is served at
+`https://{slug}.wildwoodapps.io`.
+
+Each deployment is one container on Wildwood's cluster: an init container unpacks the uploaded
+build artifact into `/workspace`, and the runtime container serves it. Static and React sites are
+served by nginx with an `index.html` fallback for client-side routes; NodeJs and DotNet sites run
+your process on port 8080.
+
+For the end-to-end build-and-publish walkthrough, see **[Deploy](#deploy)**. This section is the
+tool reference and the lifecycle operations.
 
 ## Prerequisites
 
-- MCP connection must be active (run `/wildwood setup` if not)
-- Company must have the `APP_HOSTING` feature enabled (Starter tier or higher)
+- MCP connection active (run `/wildwood setup` if not)
+- `APP_HOSTING` tier feature, plus `HOSTING_NODEJS` or `HOSTING_DOTNET` for those runtimes
+- Within the `HOSTING_APP_COUNT` limit
 
-## Available Commands
+## Tool Reference
 
-### List Deployments
-```
-hosting_deployment_list
-```
+### Read
 
-### Get Deployment Details
-```
-hosting_deployment_get(deploymentId: "...")
-```
+| Tool | Notes |
+|------|-------|
+| `hosting_deployment_list` | Every site in the company: name, slug, runtime, framework, status, current version, live URL. Live cluster state is deliberately excluded (one round-trip per row). |
+| `hosting_deployment_get(deploymentId)` | `{ deployment, workload, note }` — `workload.phase` is `NotFound` / `Progressing` / `Running` / `Failed` / `Stopped`, with `readyReplicas`, `desiredReplicas` and a message. `workload` is `null` and `note` explains when the cluster is unreachable. |
+| `hosting_get_upload_url(deploymentId)` | Step 1 of deploying. Presigned PUT URL + `uploadId`, valid **15 minutes**. Creates nothing and changes no state. |
+| `hosting_deployment_logs(deploymentId, source)` | `source: "build"` (default) = platform deploy/rollback/start/stop history, newest first, with failure messages. `source: "runtime"` = last ~200 lines of the live container's output. Runtime logs are empty until a pod is running. |
+| `hosting_check_slug(slug)` | Availability plus a reason and suggestions when taken. The returned `url` uses the *effective* slug (staging prefixes `stg-`). |
+| `hosting_domain_list(deploymentId)` | Custom domains recorded for a deployment. |
+| `hosting_metrics(deploymentId, days)` | Requests, response times, error rates, bandwidth. Defaults to 30 days. |
 
-### Create a New Deployment
+### Write (all require `confirm: true`)
+
+| Tool | Notes |
+|------|-------|
+| `hosting_deployment_create(appId, slug, runtime, ...)` | Creates the slot, **Pending**, serving nothing. `runtime` is `1`=Static, `2`=React, `3`=NodeJs, `4`=DotNet. |
+| `hosting_deployment_deploy(deploymentId, uploadId, confirm)` | Step 2 of deploying. Publishes an already-uploaded package, waits for the rollout. |
+| `hosting_deployment_start(deploymentId, confirm)` | Scales back up. **Only a `Stopped` site that already has a deployed artifact.** |
+| `hosting_deployment_stop(deploymentId, confirm)` | Scales to zero, keeps the artifact. **Only an `Active` site.** |
+| `hosting_deployment_rollback(deploymentId, confirm)` | Back one version, `v{N}` → `v{N-1}`, and waits for the rollout. |
+| `hosting_deployment_delete(deploymentId, confirm)` | Removes the workload, every artifact version and the record. The slug becomes claimable again. Irreversible. |
+| `hosting_domain_add(deploymentId, domain, confirm)` | Records a custom domain — see the note below. |
+| `hosting_domain_remove(domainId, confirm)` | Removes it; the site stays reachable at its `wildwoodapps.io` address. |
+
+### Create parameters
+
 ```
 hosting_deployment_create(
   appId: "...",
   slug: "my-app",
-  runtime: 1,           // 0=Static, 1=NodeJs, 2=DotNet, 3=Docker
-  framework: "react",
-  entryPoint: "server.js",
-  buildCommand: "npm run build",
+  runtime: 2,                    // 1=Static, 2=React, 3=NodeJs, 4=DotNet
+  framework: "react",            // free-text label
+  entryPoint: null,              // optional for NodeJs (default "server.js"),
+                                 // REQUIRED for DotNet, unused for Static/React
+  buildCommand: "npm run build", // reference only — never executed server-side
   outputDirectory: "dist",
   confirm: true
 )
 ```
 
-**Runtime options:**
-| Runtime | Value | Best For |
-|---------|-------|----------|
-| Static | 0 | React, Vue, static HTML |
-| Node.js | 1 | Express, Next.js, Nuxt |
-| .NET | 2 | ASP.NET Core, Blazor Server |
-| Docker | 3 | Custom containers |
-
-### Check Slug Availability
-```
-hosting_check_slug(slug: "my-app")
-```
-
-### Start / Stop Deployment
-```
-hosting_deployment_start(deploymentId: "...", confirm: true)
-hosting_deployment_stop(deploymentId: "...", confirm: true)
-```
-
-### Rollback Deployment
-```
-hosting_deployment_rollback(deploymentId: "...", confirm: true)
-```
-
-### Delete Deployment
-```
-hosting_deployment_delete(deploymentId: "...", confirm: true)
-```
-
-### View Deployment Logs
-```
-hosting_deployment_logs(deploymentId: "...")
-```
-
-### Custom Domains
-```
-hosting_domain_list(deploymentId: "...")
-hosting_domain_remove(domainId: "...", confirm: true)
-```
-
-### Performance Metrics
-```
-hosting_metrics(deploymentId: "...", days: 30)
-```
+An out-of-range `runtime` is rejected up front. Python is a declared runtime with no serving image
+and is refused explicitly.
 
 ## Workflow: Deploy a New App
 
-1. Check feature availability (`APP_HOSTING`)
-2. Check slug: `hosting_check_slug(slug: "my-app")`
-3. Create: `hosting_deployment_create(...)` with settings
-4. Deploy code through WildwoodAdmin > Hosting > Deployments > Deploy
-5. Verify: `hosting_deployment_get(...)` and visit the live URL
-6. Add custom domain (optional) via WildwoodAdmin
+1. Check features and limits (`APP_HOSTING`, plus `HOSTING_NODEJS`/`HOSTING_DOTNET`)
+2. `hosting_check_slug(slug: "my-app")`
+3. `hosting_deployment_create(...)` — see the runtime table above
+4. Build locally and zip the **contents** of the output directory (see [Deploy](#deploy) Step 4)
+5. `hosting_get_upload_url(deploymentId)` → run the returned `curlExample` to PUT the zip
+6. `hosting_deployment_deploy(deploymentId, uploadId, confirm: true)`
+7. `hosting_deployment_get(deploymentId)` until `workload.phase` is `Running`, then visit the URL
 
-## Tier Limits
+## Start / Stop Guards
 
-| Limit | Starter | Professional | Business | Enterprise |
-|-------|---------|-------------|----------|------------|
-| Hosted Apps | 1 | 5 | 15 | Unlimited |
-| Storage | 500 MB | 2 GB | 10 GB | Unlimited |
-| Custom Domains | 0 | 3 | 10 | Unlimited |
-| Bandwidth/mo | 10 GB | 50 GB | 200 GB | Unlimited |
+Stop and start are **scale operations**, not redeploys — the artifact and version are untouched, so
+a stopped site comes straight back up on the same build.
 
-## Add-Ons
+- `hosting_deployment_stop` requires status **Active**. A Pending, Failed or mid-deploy site has no
+  running workload and is refused.
+- `hosting_deployment_start` requires status **Stopped** *and* an already-deployed artifact. A site
+  that has never been deployed cannot be started — deploy it instead.
 
-| Add-On | Price | What It Adds |
-|--------|-------|-------------|
-| Extra Hosting Apps (+3) | $15/mo | 3 additional deployments |
-| Extra Storage (+2 GB) | $7/mo | 2 GB more storage |
-| Extra Bandwidth (+50 GB) | $9/mo | 50 GB more bandwidth |
-| App Size Upgrade (Medium) | $10/mo | 0.5 vCPU, 1 GB RAM |
-| App Size Upgrade (Large) | $25/mo | 1 vCPU, 2 GB RAM |
-| Always-Warm | $5/mo | Eliminate cold starts |
+Both return `success: false` with an explanatory `message` rather than throwing.
+
+## Rollback Semantics
+
+`hosting_deployment_rollback` moves the site back exactly one version and waits for that rollout.
+
+- Only the **last few versions are retained**. A rollback whose target artifact has already been
+  pruned is refused, and the site keeps serving what it is serving.
+- Refusals (nothing to roll back to, or a deploy already in flight) come back as `success: false`
+  with the reason. A rollback that reaches the cluster but does not come up is reported as a
+  failure, not a success.
+- A failed deploy keeps the new version number and artifact key on purpose — the workload really
+  was pointed at them. Rollback is the way back, not a status edit.
+
+## Custom Domains
+
+`hosting_domain_add` / `hosting_domain_list` / `hosting_domain_remove` record and track a custom
+domain against a deployment, but **routing for custom domains is not wired up yet** — the site's
+ingress currently serves only `{slug}.wildwoodapps.io`. Adding a domain will not make it serve.
+
+**Custom domain routing is coming in v1.1.** Until then, use the `wildwoodapps.io` subdomain, or
+put the site behind your own CDN/proxy pointing at that hostname.
+
+## Environment Variables
+
+A deployment's environment variables are delivered to the running container (NodeJs and DotNet;
+Static/React are already built). They are set in **WildwoodAdmin > Hosting > Deployments** — there
+is no MCP tool for them yet.
+
+The platform's own wiring wins over yours: `PORT=8080` for NodeJs and
+`ASPNETCORE_URLS=http://+:8080` for DotNet are applied last, because the container port, Service
+and network policy all hard-code 8080.
+
+## Tier Features and Limits
+
+The platform enforces these keys; the actual per-tier numbers live in your tier configuration —
+read them with `wildwood_list_app_tiers` or in WildwoodAdmin, and see WildwoodAdmin for add-on
+pricing.
+
+| Key | Kind | Governs |
+|-----|------|---------|
+| `APP_HOSTING` | feature | Access to hosting at all |
+| `HOSTING_NODEJS` | feature | Creating a NodeJs (`3`) deployment |
+| `HOSTING_DOTNET` | feature | Creating a DotNet (`4`) deployment |
+| `HOSTING_APP_COUNT` | limit | Number of hosted sites |
+| `HOSTING_STORAGE_MB` | limit | Artifact storage, checked on every deploy |
+| `HOSTING_BANDWIDTH_GB` | limit | Monthly bandwidth |
+| `HOSTING_CUSTOM_DOMAIN_COUNT` | limit | Custom domains per company |
+
+Package ceilings are platform-wide, not tier-based: 100 MB zip, 10,000 entries, 500 MB
+uncompressed.
 
 ## Troubleshooting
 
-- **"Feature not enabled"**: Upgrade to Starter tier or higher
-- **"Limit exceeded"**: Upgrade tier or purchase add-on
-- **Deployment not starting**: Check `hosting_deployment_logs` for errors
-- **Custom domain not working**: Verify DNS CNAME → `apps.wildwoodworks.io`
-- **Slow cold starts**: Purchase "Always-Warm" add-on
+- **"Feature not enabled" / create returned an error**: check `APP_HOSTING`, and
+  `HOSTING_NODEJS` / `HOSTING_DOTNET` for that runtime.
+- **"Limit exceeded"**: `HOSTING_APP_COUNT` on create, `HOSTING_STORAGE_MB` on deploy. Upgrade the
+  tier or add an add-on.
+- **"A deployment is already in progress"**: one deploy or rollback per site at a time; the second
+  is refused, not queued, and the staged upload is discarded. Get a fresh upload URL and retry.
+- **Deploy succeeded but the site 404s or is blank**: the zip almost certainly has a nested folder
+  at its root. Check `unzip -l site.zip`.
+- **Deploy succeeded but the app misbehaves**: `hosting_deployment_logs(source: "runtime")`.
+- **Rollout failed**: `hosting_deployment_logs(source: "build")` for the failure message.
+- **Site unreachable though the pod looks healthy**: the app is not listening on 8080.
+- **Custom domain not serving**: expected — routing lands in v1.1 (see above).
 
 ---
 
 # Database Hosting
 
-Manage hosted Azure SQL databases on the Wildwood platform.
+Provision and manage **hosted PostgreSQL 16 databases** on Wildwood's managed cluster. Each
+database gets its own dedicated owner role, its own storage quota and its own connection budget.
+
+> **Read this before provisioning: the database is reachable from inside the cluster only.**
+> In v1 the hosted PostgreSQL instance is not exposed to the public internet. The connection string
+> works from apps running on **Wildwood hosting**; it will **not** connect from a developer
+> workstation, from CI, or from an app hosted anywhere else. If the user needs to connect from
+> their laptop, this is not the right product for them yet — tell them plainly rather than letting
+> them provision and then debug a timeout.
 
 ## Prerequisites
 
-- MCP connection must be active (run `/wildwood setup` if not)
-- Company must have the `DB_HOSTING` feature enabled (Professional tier or higher)
+- MCP connection active (run `/wildwood setup` if not)
+- `DB_HOSTING` tier feature — creation throws `FeatureNotEnabledException` without it
+- `DB_HOSTING_ELASTIC_POOL` additionally, for the Elastic tier
+- Within the `DB_HOSTED_COUNT` and `DB_STORAGE_MB` limits
 
-## Available Commands
+## Tool Reference
 
-### List Databases
-```
-database_hosting_list
-```
+### Read
 
-### Get Database Details
-```
-database_hosting_get(databaseId: "...")
-```
+| Tool | Notes |
+|------|-------|
+| `database_hosting_list` | Names, slugs, engines, tiers, statuses, storage usage. |
+| `database_hosting_get(databaseId)` | One database's configuration, status and storage usage. |
+| `database_hosting_stats(databaseId)` | Current on-disk size, the tier's storage quota, active backend connections. |
+| `database_hosting_get_connection(databaseId)` | The Npgsql connection string for the owner role. **Sensitive — audit-logged.** |
+| `database_hosting_backup_list(databaseId)` | Each `Completed` entry is a `pg_dump` custom-format archive stored off-server. |
 
-### Provision a New Database
+### Write (all require `confirm: true`)
+
+| Tool | Notes |
+|------|-------|
+| `database_hosting_create(name, slug, appId, ...)` | Provisions in the background — returns `Provisioning`, becomes `Active` shortly after. |
+| `database_hosting_update(databaseId, ...)` | Metadata only: `name`, `description`, `backupEnabled`. Does **not** change engine, tier or credentials. |
+| `database_hosting_suspend(databaseId)` | Refuses new connections, terminates existing sessions, drops the owner role's connection budget to zero. Data retained. |
+| `database_hosting_resume(databaseId)` | Reopens connections and restores the tier's connection budget. |
+| `database_hosting_backup_create(databaseId)` | Runs in the background — returns `InProgress`, becomes `Completed` once uploaded. |
+| `database_hosting_backup_restore(databaseId, backupId)` | **Overwrites the database.** Synchronous; can take a while. |
+| `database_hosting_delete(databaseId)` | Soft-deletes immediately and recoverably; the database and its owner role are dropped for good after a **7-day grace period**. |
+
+### Provision a database
+
 ```
 database_hosting_create(
   name: "My App Database",
   slug: "my-app-db",
   appId: "...",
   description: "Primary database for my application",
-  databaseType: "SqlServer",
-  hostingTier: "Basic",          // Basic, Standard, or Elastic
+  databaseType: "PostgreSql",    // optional; the only engine offered and the default
+  hostingTier: "Basic",          // Basic (default), Standard, or Elastic
   confirm: true
 )
 ```
 
-**Tier options:**
-| Tier | DTU | Max Size | Best For |
-|------|-----|----------|----------|
-| Basic | 5 DTU | 2 GB | Dev/test, low-traffic |
-| Standard | 10 DTU | 250 GB | Production |
-| Elastic | Pool | Pool | Multiple databases |
+`databaseType: "SqlServer"` is **rejected** — SQL Server hosting is not offered on this platform.
+Omit `databaseType` and the platform default (PostgreSql) applies.
 
-### Get Connection String
-```
-database_hosting_get_connection(databaseId: "...")
-```
+**Tiers:**
 
-### Suspend / Resume
-```
-database_hosting_suspend(databaseId: "...", confirm: true)
-database_hosting_resume(databaseId: "...", confirm: true)
-```
+| Tier | Storage (soft quota) | Concurrent connections |
+|------|----------------------|------------------------|
+| Basic | 2 GB | 10 |
+| Standard | 10 GB | 25 |
+| Elastic | 25 GB | 50 |
 
-### Create Backup
-```
-database_hosting_backup_create(databaseId: "...", confirm: true)
-```
-
-### List Backups
-```
-database_hosting_backup_list(databaseId: "...")
-```
-
-### Restore from Backup
-```
-database_hosting_backup_restore(databaseId: "...", backupId: "...", confirm: true)
-```
-
-### View Statistics
-```
-database_hosting_stats(databaseId: "...")
-```
-
-### Update Settings
-```
-database_hosting_update(databaseId: "...", name: "Updated Name", backupEnabled: true, confirm: true)
-```
-
-### Delete Database
-```
-database_hosting_delete(databaseId: "...", confirm: true)
-```
+Storage is a soft quota; the connection budget is enforced on the database's owner role, so
+exceeding it produces connection refusals rather than a throttle. Elastic additionally requires the
+`DB_HOSTING_ELASTIC_POOL` feature.
 
 ## Workflow: Set Up a New Database
 
-1. Check `DB_HOSTING` feature availability
-2. List existing: `database_hosting_list`
-3. Create: `database_hosting_create(...)` with settings
-4. Wait for status to change from `Provisioning` to `Active`
-5. Get connection string: `database_hosting_get_connection(...)`
-6. Configure your app with the connection string
+1. Confirm the app will run **on Wildwood hosting** — see the reachability note above
+2. Check `DB_HOSTING` availability and existing databases: `database_hosting_list`
+3. `database_hosting_create(...)`
+4. Poll `database_hosting_get(databaseId)` until `status` is `Active`. Statuses are `Pending`,
+   `Provisioning`, `Active`, `Suspended`, `Deleting`, `Failed`. (WildwoodAdmin's Databases page
+   gets the same transitions pushed live over SignalR; via MCP you poll.)
+5. `database_hosting_get_connection(databaseId)` — returns Npgsql format:
+   `Host=...;Port=5432;Database=...;Username=...;Password=...`
+6. Store it as an environment variable on the hosted deployment
+   (WildwoodAdmin > Hosting > Deployments) — never in the deployed zip, which rejects `.env` files
+
+## Connecting From Your App
+
+The connection string comes back in **Npgsql key/value form**. Some clients want a URL instead:
+`postgresql://{username}:{password}@{host}:{port}/{database}`.
+
+**C# / .NET (Npgsql)** — use the string as returned:
+
+```csharp
+// Program.cs
+builder.Services.AddDbContext<AppDbContext>(o =>
+    o.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
+```
+
+Supply it as the `ConnectionStrings__Default` environment variable on the deployment. Do not put it
+in `appsettings.Production.json` — those files are on the hosting blocked-file list.
+
+**Node.js (node-postgres)**:
+
+```js
+import pg from 'pg';
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+// DATABASE_URL = postgresql://user:password@host:5432/dbname
+```
+
+**Prisma** — needs the URL form in `DATABASE_URL`:
+
+```prisma
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+```
+
+```
+DATABASE_URL="postgresql://user:password@host:5432/dbname"
+```
+
+Note that Prisma migrations run from wherever you run the CLI — which, given the in-cluster-only
+reachability, means they cannot be run from a laptop in v1.
+
+**Python (psycopg)**:
+
+```python
+import psycopg
+conn = psycopg.connect(os.environ["DATABASE_URL"])  # postgresql://user:password@host:5432/dbname
+```
+
+Keep a connection pool sized under the tier's connection budget (10 / 25 / 50) — the limit is
+enforced on the role, and serverless or per-request connections exhaust it quickly.
+
+## Backups
+
+- A backup is a **`pg_dump` custom-format archive** (`.dump`), not plain SQL, stored off-server.
+- `database_hosting_backup_create` runs in the background: the row is returned `InProgress` and
+  becomes `Completed` when the archive has uploaded. Poll `database_hosting_backup_list`.
+- Restore runs **`pg_restore --clean --if-exists`**: every existing object is dropped and recreated
+  from the archive. Anything written since that backup is gone. It runs synchronously and can take
+  a while on a large database.
+- Automatic backups are toggled with `database_hosting_update(backupEnabled: ...)`.
 
 ## Troubleshooting
 
-- **"Feature not enabled"**: Upgrade to Professional tier or higher
-- **"Limit exceeded"**: Upgrade tier or purchase "Extra Hosted DBs" add-on
-- **Stuck in "Provisioning"**: Background service retries automatically (max 3). Check with `database_hosting_get`
-- **"Failed" state**: Admin can retry from WildwoodAdmin > Hosting > Databases
+- **"Feature not enabled"**: the company lacks `DB_HOSTING` (or `DB_HOSTING_ELASTIC_POOL` for
+  Elastic). Upgrade the tier.
+- **"Limit exceeded"**: `DB_HOSTED_COUNT` or `DB_STORAGE_MB`. Note the storage limit is charged at
+  create time against the *tier's* quota, so a Standard database needs 10 GB of headroom.
+- **"SQL Server hosting is not offered on this platform; use PostgreSql."**: drop the
+  `databaseType` argument.
+- **Connection times out from a local machine**: expected in v1 — the instance is in-cluster only.
+- **Connection refused / too many clients**: the owner role's connection budget for the tier is
+  exhausted, or the database is `Suspended`. Check `database_hosting_stats` and
+  `database_hosting_get`.
+- **Stuck in "Provisioning"**: re-check with `database_hosting_get`; a `Failed` database can be
+  retried from WildwoodAdmin > Hosting > Databases.
 
 ---
 
@@ -1457,11 +1725,15 @@ const client = createWildwoodClient({ apiUrl, appId, platform? });
 - Login response: `{ jwtToken, email, firstName, ... }` (no `token` alias, no `user` sub-object)
 - DTO naming: PascalCase (Email, Password, AppId)
 
-## MCP Tools (97 total: 44 read, 53 write)
+## MCP Tools (110 total: 51 read, 59 write)
 
 All write tools require `confirm: true` and auto-snapshot before changes.
 
-### Read Tools (44)
+> The tables below list the most-used tools, not every one. The counts in the headings are the true
+> totals (verified by counting `[McpServerTool]` in the server's `MCPServerTools/`); the rows are a
+> subset.
+
+### Read Tools (51)
 
 | Tool | Description |
 |------|-------------|
@@ -1500,17 +1772,18 @@ All write tools require `confirm: true` and auto-snapshot before changes.
 | `wildwood_get_mcp_wrap_url` | Public MCP wrap URL + claude mcp add instructions |
 | `hosting_check_slug` | Check if a hosting subdomain slug is available |
 | `hosting_deployment_list` | List app deployments |
-| `hosting_deployment_get` | Get deployment details |
-| `hosting_deployment_logs` | Retrieve deployment build/runtime logs |
+| `hosting_deployment_get` | Deployment record + live cluster workload phase |
+| `hosting_get_upload_url` | Presigned URL to upload a build package (step 1 of deploying) |
+| `hosting_deployment_logs` | Deploy history (`source: "build"`) or live container output (`source: "runtime"`) |
 | `hosting_domain_list` | List custom domains for a deployment |
 | `hosting_metrics` | Hosting metrics (requests, bandwidth, errors) |
-| `database_hosting_list` | List provisioned databases |
+| `database_hosting_list` | List provisioned PostgreSQL databases |
 | `database_hosting_get` | Get database details |
-| `database_hosting_stats` | Database usage stats |
-| `database_hosting_get_connection` | Retrieve database connection string |
-| `database_hosting_backup_list` | List database backups |
+| `database_hosting_stats` | Database size, quota, active connections |
+| `database_hosting_get_connection` | Npgsql connection string (in-cluster reachable only) |
+| `database_hosting_backup_list` | List `pg_dump` archive backups |
 
-### Write Tools (53)
+### Write Tools (59)
 
 | Tool | Description |
 |------|-------------|
@@ -1551,21 +1824,21 @@ All write tools require `confirm: true` and auto-snapshot before changes.
 | `wildwood_set_api_credentials` | Set/rotate a provider's credentials and auth scheme |
 | `wildwood_generate_mcp_tools` | Generate MCP tools from the provider's spec |
 | `wildwood_manage_mcp_wrap` | Enable/disable the public MCP wrap, metadata, tokens |
-| `hosting_deployment_create` | Create a new hosted deployment slot |
-| `hosting_deployment_deploy` | Deploy an app build to a hosted slot |
-| `hosting_deployment_start` | Start a deployment |
-| `hosting_deployment_stop` | Stop a deployment |
-| `hosting_deployment_rollback` | Roll a deployment back to a prior build |
-| `hosting_deployment_delete` | Delete a deployment |
-| `hosting_domain_add` | Add a custom domain |
+| `hosting_deployment_create` | Create a new hosted deployment slot (runtime 1=Static, 2=React, 3=NodeJs, 4=DotNet) |
+| `hosting_deployment_deploy` | Publish an uploaded package by `uploadId` (step 2 of deploying) |
+| `hosting_deployment_start` | Start a Stopped deployment that has a deployed artifact |
+| `hosting_deployment_stop` | Scale an Active deployment to zero, keeping its artifact |
+| `hosting_deployment_rollback` | Roll a deployment back one version (v{N} → v{N-1}) |
+| `hosting_deployment_delete` | Delete a deployment, its artifacts and its workload |
+| `hosting_domain_add` | Record a custom domain (routing lands in v1.1) |
 | `hosting_domain_remove` | Remove a custom domain |
-| `database_hosting_create` | Provision a new managed Azure SQL database |
-| `database_hosting_update` | Update database tier/size |
-| `database_hosting_delete` | Delete a database (irreversible) |
-| `database_hosting_suspend` | Suspend a database to reduce cost |
+| `database_hosting_create` | Provision a managed PostgreSQL 16 database |
+| `database_hosting_update` | Update database metadata (name, description, backups) |
+| `database_hosting_delete` | Soft-delete a database (dropped after a 7-day grace period) |
+| `database_hosting_suspend` | Suspend a database; connections refused, data retained |
 | `database_hosting_resume` | Resume a suspended database |
-| `database_hosting_backup_create` | Create an on-demand backup |
-| `database_hosting_backup_restore` | Restore database from a backup |
+| `database_hosting_backup_create` | Create an on-demand `pg_dump` backup |
+| `database_hosting_backup_restore` | Restore via `pg_restore --clean` (overwrites current data) |
 | `wildwood_restore_config_snapshot` | Restore from backup |
 
 ### Configuration Snapshots & Rollback

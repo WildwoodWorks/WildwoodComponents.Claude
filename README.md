@@ -88,9 +88,9 @@ One command does everything — just tell it what you need:
 /wildwood              → show menu
 /wildwood setup        → create account, connect MCP, configure your first app
 /wildwood integrate    → add the Wildwood SDK to your project
-/wildwood deploy       → build and deploy your app
+/wildwood deploy       → build and deploy your app to Wildwood hosting
 /wildwood hosting      → manage Wildwood-hosted deployments
-/wildwood database     → manage hosted Azure SQL databases
+/wildwood database     → manage hosted PostgreSQL databases
 /wildwood status       → check platform health and app status
 /wildwood diagnose     → troubleshoot MCP connection / OAuth issues
 ```
@@ -99,7 +99,7 @@ One command does everything — just tell it what you need:
 
 Connects Claude to the Wildwood API at `api.wildwoodworks.io/mcp` via OAuth 2.1 with PKCE. Supports the native authorization-code flow (RFC 6749), client-id metadata documents (CIMD), resource indicators (RFC 8707), and the device authorization grant (RFC 8628) for headless environments.
 
-Once connected, Claude can query and manage your Wildwood apps directly using 97 MCP tools (44 read, 53 write).
+Once connected, Claude can query and manage your Wildwood apps directly using 110 MCP tools (51 read, 59 write).
 
 ## WildwoodComponents
 

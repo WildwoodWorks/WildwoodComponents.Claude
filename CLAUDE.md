@@ -21,12 +21,12 @@ Just tell it what you need — setup, integrate, deploy, hosting, database, or s
 - `/wildwood integrate` — add SDK to your project
 - `/wildwood deploy` — build and deploy your app
 - `/wildwood hosting` — manage Wildwood-hosted deployments
-- `/wildwood database` — manage hosted Azure SQL databases
+- `/wildwood database` — manage hosted PostgreSQL databases
 - `/wildwood status` — check platform health and app status
 
 ## MCP Server Connection
 
-This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io/mcp`. On first connection, a browser window opens for OAuth login at WildwoodAdmin. After authentication, Claude can use 97 MCP tools (44 read, 53 write) to query and fully configure Wildwood apps — including AI providers, auth, payments, themes, CAPTCHA, tiers, add-ons, subscriptions, feedback, consent, third-party scripts, the seeder, app hosting, and database hosting. All write tools require `confirm: true` and auto-snapshot before changes. Run `/wildwood` for the full tool reference and all platform workflows.
+This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io/mcp`. On first connection, a browser window opens for OAuth login at WildwoodAdmin. After authentication, Claude can use 110 MCP tools (51 read, 59 write) to query and fully configure Wildwood apps — including AI providers, auth, payments, themes, CAPTCHA, tiers, add-ons, subscriptions, feedback, consent, third-party scripts, the seeder, app hosting, and database hosting. All write tools require `confirm: true` and auto-snapshot before changes. Run `/wildwood` for the full tool reference and all platform workflows.
 
 ## SDK Packages
 
@@ -60,9 +60,13 @@ This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io
 | Usage | Usage dashboard + overage summary | React, RN, Blazor, Swift |
 | Seeder | Idempotent server-side app-data seeding with server ledger/history (X-API-Key auth; service key scoped `ai:manage roles:manage tiers:manage`) | Node.js, .NET |
 
-## MCP Tools (97 total)
+## MCP Tools (110 total)
 
-### Read Tools (44)
+> The tables below list the most-used tools, not every one. The per-section counts are the true
+> totals (verified by counting `[McpServerTool]` in the server's `MCPServerTools/`); the rows are a
+> subset.
+
+### Read Tools (51)
 | Tool | Description |
 |------|-------------|
 | `wildwood_get_app_info` | Current app config (name, URLs, IsMCPEnabled) |
@@ -100,17 +104,18 @@ This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io
 | `wildwood_get_mcp_wrap_url` | Public MCP wrap URL + claude mcp add instructions |
 | `hosting_check_slug` | Check if a hosting subdomain slug is available |
 | `hosting_deployment_list` | List app deployments |
-| `hosting_deployment_get` | Get deployment details |
-| `hosting_deployment_logs` | Retrieve deployment build/runtime logs |
+| `hosting_deployment_get` | Deployment record + live cluster workload phase |
+| `hosting_get_upload_url` | Presigned URL to upload a build package (step 1 of deploying) |
+| `hosting_deployment_logs` | Deploy history (`source: "build"`) or live container output (`source: "runtime"`) |
 | `hosting_domain_list` | List custom domains for a deployment |
 | `hosting_metrics` | Hosting metrics (requests, bandwidth, errors) |
-| `database_hosting_list` | List provisioned databases |
+| `database_hosting_list` | List provisioned PostgreSQL databases |
 | `database_hosting_get` | Get database details |
-| `database_hosting_stats` | Database usage stats |
-| `database_hosting_get_connection` | Retrieve database connection string |
-| `database_hosting_backup_list` | List database backups |
+| `database_hosting_stats` | Database size, quota, active connections |
+| `database_hosting_get_connection` | Npgsql connection string (in-cluster reachable only) |
+| `database_hosting_backup_list` | List `pg_dump` archive backups |
 
-### Write Tools (53) — require `confirm: true`
+### Write Tools (59) — require `confirm: true`
 | Tool | Description |
 |------|-------------|
 | `wildwood_create_app` | Create a new app |
@@ -151,21 +156,21 @@ This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io
 | `wildwood_set_api_credentials` | Set/rotate a provider's credentials and auth scheme |
 | `wildwood_generate_mcp_tools` | Generate MCP tools from the provider's spec |
 | `wildwood_manage_mcp_wrap` | Enable/disable the public MCP wrap, metadata, tokens |
-| `hosting_deployment_create` | Create a new hosted deployment slot |
-| `hosting_deployment_deploy` | Deploy an app build to a hosted slot |
-| `hosting_deployment_start` | Start a deployment |
-| `hosting_deployment_stop` | Stop a deployment |
-| `hosting_deployment_rollback` | Roll a deployment back to a prior build |
-| `hosting_deployment_delete` | Delete a deployment |
-| `hosting_domain_add` | Add a custom domain |
+| `hosting_deployment_create` | Create a new hosted deployment slot (runtime 1=Static, 2=React, 3=NodeJs, 4=DotNet) |
+| `hosting_deployment_deploy` | Publish an uploaded package by `uploadId` (step 2 of deploying) |
+| `hosting_deployment_start` | Start a Stopped deployment that has a deployed artifact |
+| `hosting_deployment_stop` | Scale an Active deployment to zero, keeping its artifact |
+| `hosting_deployment_rollback` | Roll a deployment back one version (v{N} → v{N-1}) |
+| `hosting_deployment_delete` | Delete a deployment, its artifacts and its workload |
+| `hosting_domain_add` | Record a custom domain (routing lands in v1.1) |
 | `hosting_domain_remove` | Remove a custom domain |
-| `database_hosting_create` | Provision a new managed Azure SQL database |
-| `database_hosting_update` | Update database tier/size |
-| `database_hosting_delete` | Delete a database (irreversible) |
-| `database_hosting_suspend` | Suspend a database to reduce cost |
+| `database_hosting_create` | Provision a managed PostgreSQL 16 database |
+| `database_hosting_update` | Update database metadata (name, description, backups) |
+| `database_hosting_delete` | Soft-delete a database (dropped after a 7-day grace period) |
+| `database_hosting_suspend` | Suspend a database; connections refused, data retained |
 | `database_hosting_resume` | Resume a suspended database |
-| `database_hosting_backup_create` | Create an on-demand backup |
-| `database_hosting_backup_restore` | Restore database from a backup |
+| `database_hosting_backup_create` | Create an on-demand `pg_dump` backup |
+| `database_hosting_backup_restore` | Restore via `pg_restore --clean` (overwrites current data) |
 
 ## Configuring Components via MCP
 

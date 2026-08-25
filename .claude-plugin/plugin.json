@@ -1,6 +1,6 @@
 {
   "name": "wildwood",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "description": "Build apps with Wildwood authentication, AI chat, messaging, payments, and hosting using pre-built, production-ready components. Includes the /wildwood slash command and auto-registers the Wildwood MCP server (OAuth fires on first use).",
   "author": {
     "name": "Wildwood Works"
