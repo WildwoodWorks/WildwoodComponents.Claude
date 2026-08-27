@@ -965,6 +965,26 @@ explicitly. Only `1`, `2`, `3` and `4` are accepted.
 
 Tell the user what was detected and which runtime it maps to, and confirm before continuing.
 
+### Start from a template (when there is nothing to detect)
+
+If the directory holds no app yet, the platform ships starter projects that already carry a working
+runtime, entry point and packaging shape:
+
+```
+hosting_list_templates()
+   → id, name, runtime (the integer hosting_deployment_create takes), framework,
+     buildCommand, outputDirectory, defaultEntryPoint, packagingNotes
+
+hosting_get_template(templateId: "...", slug: "my-app")
+   → the same metadata plus files: { "path/in/project": "content" }
+```
+
+Write each `files` entry to that path, then fill in whatever `remainingPlaceholders` reports —
+`{{APP_ID}}` has no parameter on purpose, because the app id is yours to supply. From there the
+flow is the normal one: Step 2 onwards, using the `runtime`, `defaultEntryPoint`, `buildCommand` and
+`outputDirectory` the template reported, and `packagingNotes` for what to zip. Templates whose
+packaging has more than one step (Next.js) ship a `README.md` in `files` that spells it out.
+
 ## Deploy Step 2: Pre-Flight Checks
 
 1. **MCP connection active** — run `/wildwood setup` if not.
@@ -1049,13 +1069,17 @@ Verify before uploading: `unzip -l site.zip | head` must show `index.html` / `se
 
 ### Per-runtime build and packaging
 
-| Runtime | Build | Zip the contents of |
-|---------|-------|---------------------|
-| Static / React (Vite) | `npm ci && npm run build` | `dist/` |
-| Static (Next.js/Nuxt static export) | `npm ci && npm run build` | `out/` or `.output/public/` |
-| NodeJs | `npm ci --omit=dev` | project root, **including `node_modules/`** |
-| DotNet | `dotnet publish -c Release -o publish` | `publish/` |
-| Static (Blazor WASM) | `dotnet publish -c Release -o publish` | `publish/wwwroot/` |
+| Runtime | Build | Zip the contents of | `entryPoint` |
+|---------|-------|---------------------|--------------|
+| Static / React (Vite) | `npm ci && npm run build` | `dist/` | — |
+| Static (Next.js/Nuxt static export) | `npm ci && npm run build` | `out/` or `.output/public/` | — |
+| NodeJs | `npm ci --omit=dev` | project root, **including `node_modules/`** | `server.js` (default) |
+| NodeJs (Next.js SSR) | `npm ci && npm run build` with `output: 'standalone'` | `.next/standalone/` — after copying `.next/static` into `.next/standalone/.next/static` and `public/` into `.next/standalone/public` | `server.js` (the standalone one) |
+| DotNet | `dotnet publish -c Release -o publish` | `publish/` | the app `.dll`, e.g. `MyApp.dll` |
+| Static (Blazor WASM) | `dotnet publish -c Release -o publish` | `publish/wwwroot/` | — |
+
+Miss the two copy steps on the Next.js row and the site loads with every stylesheet and script
+404ing — the standalone output deliberately excludes both directories.
 
 ### Node.js notes
 
@@ -1069,7 +1093,10 @@ Verify before uploading: `unzip -l site.zip | head` must show `index.html` / `se
   pass that path — it is resolved relative to `/workspace`.
 - Next.js/Nuxt in SSR mode must produce a self-contained server bundle
   (`output: 'standalone'` for Next.js, `.output/` for Nuxt) whose entry file you name as
-  `entryPoint`, with its dependencies packed alongside.
+  `entryPoint`, with its dependencies packed alongside. `hosting_get_template` ships a Next.js
+  starter already configured this way — do not hand-roll a `server.js` that wraps `next()`: it needs
+  the full `node_modules` nothing installs on the platform, and binding anything but `0.0.0.0`
+  leaves the container unreachable.
 
 ### .NET notes
 
@@ -1805,7 +1832,7 @@ const client = createWildwoodClient({ apiUrl, appId, platform? });
 - Login response: `{ jwtToken, email, firstName, ... }` (no `token` alias, no `user` sub-object)
 - DTO naming: PascalCase (Email, Password, AppId)
 
-## MCP Tools (111 total: 51 read, 60 write)
+## MCP Tools (113 total: 53 read, 60 write)
 
 All write tools require `confirm: true` and auto-snapshot before changes.
 
@@ -1813,7 +1840,7 @@ All write tools require `confirm: true` and auto-snapshot before changes.
 > totals (verified by counting `[McpServerTool]` in the server's `MCPServerTools/`); the rows are a
 > subset.
 
-### Read Tools (51)
+### Read Tools (53)
 
 | Tool | Description |
 |------|-------------|
@@ -1850,6 +1877,8 @@ All write tools require `confirm: true` and auto-snapshot before changes.
 | `wildwood_list_api_providers` | Company API providers (slug, auth, spec, MCP wrap state) |
 | `wildwood_detect_api` | Detect any API's spec/auth/endpoints from a URL or pasted spec |
 | `wildwood_get_mcp_wrap_url` | Public MCP wrap URL + claude mcp add instructions |
+| `hosting_list_templates` | Starter templates: runtime, build command, output directory, entry point, packaging notes |
+| `hosting_get_template` | One template's metadata plus its files as `{ path: content }`, placeholders substituted |
 | `hosting_check_slug` | Check if a hosting subdomain slug is available |
 | `hosting_deployment_list` | List app deployments |
 | `hosting_deployment_get` | Deployment record + live cluster workload phase |

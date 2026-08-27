@@ -26,7 +26,7 @@ Just tell it what you need — setup, integrate, deploy, hosting, database, or s
 
 ## MCP Server Connection
 
-This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io/mcp`. On first connection, a browser window opens for OAuth login at WildwoodAdmin. After authentication, Claude can use 111 MCP tools (51 read, 60 write) to query and fully configure Wildwood apps — including AI providers, auth, payments, themes, CAPTCHA, tiers, add-ons, subscriptions, feedback, consent, third-party scripts, the seeder, app hosting, and database hosting. All write tools require `confirm: true` and auto-snapshot before changes. Run `/wildwood` for the full tool reference and all platform workflows.
+This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io/mcp`. On first connection, a browser window opens for OAuth login at WildwoodAdmin. After authentication, Claude can use 113 MCP tools (53 read, 60 write) to query and fully configure Wildwood apps — including AI providers, auth, payments, themes, CAPTCHA, tiers, add-ons, subscriptions, feedback, consent, third-party scripts, the seeder, app hosting, and database hosting. All write tools require `confirm: true` and auto-snapshot before changes. Run `/wildwood` for the full tool reference and all platform workflows.
 
 ## SDK Packages
 
@@ -60,13 +60,13 @@ This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io
 | Usage | Usage dashboard + overage summary | React, RN, Blazor, Swift |
 | Seeder | Idempotent server-side app-data seeding with server ledger/history (X-API-Key auth; service key scoped `ai:manage roles:manage tiers:manage`) | Node.js, .NET |
 
-## MCP Tools (110 total)
+## MCP Tools (113 total)
 
 > The tables below list the most-used tools, not every one. The per-section counts are the true
 > totals (verified by counting `[McpServerTool]` in the server's `MCPServerTools/`); the rows are a
 > subset.
 
-### Read Tools (51)
+### Read Tools (53)
 | Tool | Description |
 |------|-------------|
 | `wildwood_get_app_info` | Current app config (name, URLs, IsMCPEnabled) |
@@ -102,6 +102,8 @@ This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io
 | `wildwood_list_api_providers` | Company API providers (slug, auth, spec, MCP wrap state) |
 | `wildwood_detect_api` | Detect any API's spec/auth/endpoints from a URL or pasted spec |
 | `wildwood_get_mcp_wrap_url` | Public MCP wrap URL + claude mcp add instructions |
+| `hosting_list_templates` | Starter templates: runtime, build/output, entry point, packaging notes |
+| `hosting_get_template` | One template plus its files as { path: content } |
 | `hosting_check_slug` | Check if a hosting subdomain slug is available |
 | `hosting_deployment_list` | List app deployments |
 | `hosting_deployment_get` | Deployment record + live cluster workload phase |
@@ -115,7 +117,7 @@ This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io
 | `database_hosting_get_connection` | Npgsql connection string (in-cluster reachable only) |
 | `database_hosting_backup_list` | List `pg_dump` archive backups |
 
-### Write Tools (59) — require `confirm: true`
+### Write Tools (60) — require `confirm: true`
 | Tool | Description |
 |------|-------------|
 | `wildwood_create_app` | Create a new app |
