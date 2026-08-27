@@ -1510,6 +1510,7 @@ database gets its own dedicated owner role, its own storage quota and its own co
 | `database_hosting_update(databaseId, ...)` | Metadata only: `name`, `description`, `backupEnabled`. Does **not** change engine, tier or credentials. |
 | `database_hosting_suspend(databaseId)` | Refuses new connections, terminates existing sessions, drops the owner role's connection budget to zero. Data retained. |
 | `database_hosting_resume(databaseId)` | Reopens connections and restores the tier's connection budget. |
+| `database_hosting_rotate_credentials(databaseId)` | Mints a new owner-role password and **returns the new connection string** — the only time it is shown. The old password stops working immediately, so update every consumer. **Sensitive — audit-logged.** Requires an `Active` database. |
 | `database_hosting_backup_create(databaseId)` | Runs in the background — returns `InProgress`, becomes `Completed` once uploaded. |
 | `database_hosting_backup_restore(databaseId, backupId)` | **Overwrites the database.** Synchronous; can take a while. |
 | `database_hosting_delete(databaseId)` | Soft-deletes immediately and recoverably; the database and its owner role are dropped for good after a **7-day grace period**. |
@@ -1618,6 +1619,22 @@ enforced on the role, and serverless or per-request connections exhaust it quick
   a while on a large database.
 - Automatic backups are toggled with `database_hosting_update(backupEnabled: ...)`.
 
+## Rotating Credentials
+
+`database_hosting_rotate_credentials(databaseId, confirm: true)` mints a new owner-role password and
+returns the new connection string in its answer. (It is not the only way to read it afterwards —
+`database_hosting_get_connection` returns the current string too — but taking it from the rotation's
+own answer saves a second audit-logged reveal.)
+
+**The old password stops working immediately**, so treat rotation as a two-step change: rotate, then
+push the new string to every consumer. On Wildwood hosting that is
+`hosting_set_env_vars(deploymentId, envVars: { "DATABASE_URL": "<the new string>" }, confirm: true)`
+followed by a **redeploy** — env vars are applied on the next deploy, so a rotation without one
+leaves the site holding a password that no longer works.
+
+Requires an `Active` database. Rotate on a schedule, when a connection string has been shared or
+committed by accident, or when someone with access leaves.
+
 ## Troubleshooting
 
 - **"Feature not enabled"**: the company lacks `DB_HOSTING` (or `DB_HOSTING_ELASTIC_POOL` for
@@ -1630,6 +1647,8 @@ enforced on the role, and serverless or per-request connections exhaust it quick
 - **Connection refused / too many clients**: the owner role's connection budget for the tier is
   exhausted, or the database is `Suspended`. Check `database_hosting_stats` and
   `database_hosting_get`.
+- **Authentication suddenly failing after a rotation**: the site is still running with the old
+  `DATABASE_URL`. Env vars take effect on the **next deploy** — set them, then redeploy.
 - **Stuck in "Provisioning"**: re-check with `database_hosting_get`; a `Failed` database can be
   retried from WildwoodAdmin > Hosting > Databases.
 
@@ -1832,7 +1851,7 @@ const client = createWildwoodClient({ apiUrl, appId, platform? });
 - Login response: `{ jwtToken, email, firstName, ... }` (no `token` alias, no `user` sub-object)
 - DTO naming: PascalCase (Email, Password, AppId)
 
-## MCP Tools (113 total: 53 read, 60 write)
+## MCP Tools (114 total: 53 read, 61 write)
 
 All write tools require `confirm: true` and auto-snapshot before changes.
 
@@ -1892,7 +1911,7 @@ All write tools require `confirm: true` and auto-snapshot before changes.
 | `database_hosting_get_connection` | Npgsql connection string (in-cluster reachable only) |
 | `database_hosting_backup_list` | List `pg_dump` archive backups |
 
-### Write Tools (60)
+### Write Tools (61)
 
 | Tool | Description |
 |------|-------------|
@@ -1947,6 +1966,7 @@ All write tools require `confirm: true` and auto-snapshot before changes.
 | `database_hosting_delete` | Soft-delete a database (dropped after a 7-day grace period) |
 | `database_hosting_suspend` | Suspend a database; connections refused, data retained |
 | `database_hosting_resume` | Resume a suspended database |
+| `database_hosting_rotate_credentials` | Rotate the owner-role password; returns the NEW connection string |
 | `database_hosting_backup_create` | Create an on-demand `pg_dump` backup |
 | `database_hosting_backup_restore` | Restore via `pg_restore --clean` (overwrites current data) |
 | `wildwood_restore_config_snapshot` | Restore from backup |

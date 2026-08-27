@@ -26,7 +26,7 @@ Just tell it what you need — setup, integrate, deploy, hosting, database, or s
 
 ## MCP Server Connection
 
-This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io/mcp`. On first connection, a browser window opens for OAuth login at WildwoodAdmin. After authentication, Claude can use 113 MCP tools (53 read, 60 write) to query and fully configure Wildwood apps — including AI providers, auth, payments, themes, CAPTCHA, tiers, add-ons, subscriptions, feedback, consent, third-party scripts, the seeder, app hosting, and database hosting. All write tools require `confirm: true` and auto-snapshot before changes. Run `/wildwood` for the full tool reference and all platform workflows.
+This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io/mcp`. On first connection, a browser window opens for OAuth login at WildwoodAdmin. After authentication, Claude can use 114 MCP tools (53 read, 61 write) to query and fully configure Wildwood apps — including AI providers, auth, payments, themes, CAPTCHA, tiers, add-ons, subscriptions, feedback, consent, third-party scripts, the seeder, app hosting, and database hosting. All write tools require `confirm: true` and auto-snapshot before changes. Run `/wildwood` for the full tool reference and all platform workflows.
 
 ## SDK Packages
 
@@ -60,7 +60,7 @@ This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io
 | Usage | Usage dashboard + overage summary | React, RN, Blazor, Swift |
 | Seeder | Idempotent server-side app-data seeding with server ledger/history (X-API-Key auth; service key scoped `ai:manage roles:manage tiers:manage`) | Node.js, .NET |
 
-## MCP Tools (113 total)
+## MCP Tools (114 total)
 
 > The tables below list the most-used tools, not every one. The per-section counts are the true
 > totals (verified by counting `[McpServerTool]` in the server's `MCPServerTools/`); the rows are a
@@ -117,7 +117,7 @@ This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io
 | `database_hosting_get_connection` | Npgsql connection string (in-cluster reachable only) |
 | `database_hosting_backup_list` | List `pg_dump` archive backups |
 
-### Write Tools (60) — require `confirm: true`
+### Write Tools (61) — require `confirm: true`
 | Tool | Description |
 |------|-------------|
 | `wildwood_create_app` | Create a new app |
@@ -171,6 +171,7 @@ This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io
 | `database_hosting_delete` | Soft-delete a database (dropped after a 7-day grace period) |
 | `database_hosting_suspend` | Suspend a database; connections refused, data retained |
 | `database_hosting_resume` | Resume a suspended database |
+| `database_hosting_rotate_credentials` | Rotate the owner-role password and return the NEW connection string (old one stops working at once) |
 | `database_hosting_backup_create` | Create an on-demand `pg_dump` backup |
 | `database_hosting_backup_restore` | Restore via `pg_restore --clean` (overwrites current data) |
 
