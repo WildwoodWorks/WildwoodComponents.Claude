@@ -918,6 +918,58 @@ If you discover a bug in a WildwoodComponent during integration or testing, **fi
 3. **PR** via `gh pr create` with reproduction steps
 4. **Temporary workaround** in the user's app if urgent, with `// TODO: Remove workaround when WildwoodComponents PR #X is merged`
 
+## Provisioning and Entitlement Traps
+
+Five traps that have each cost a real app real user-facing breakage. They share a shape: the
+account or request looks completely correct, and the failure appears somewhere far from the cause.
+**Check these whenever an app provisions users, invites teammates, or gates features by tier.**
+
+**1. Creating a user does not automatically grant app access.**
+`POST api/users` takes `AppId` (stamped on the user record) and `AppIds` (the list
+`GrantAppAccessAsync` walks). Only `AppIds` grants access, and login requires a `UserApps` row —
+`AuthService` throws `UserNotAuthorizedForAppException` without one. The symptom is brutal to
+diagnose: the member appears on the roster with the right company and the right app-role, the API
+hands back a temporary password, and that password returns **403 NotAuthorizedForApplication**.
+Supplying `AppId` alone is now normalised into `AppIds` by `UserCreationService`, so current
+callers are fine — but if you provision through some other path, or against an older server, call
+`POST api/UserRegistration/grant-app-access` (`{ userId, companyAppId }`, where `companyAppId` is
+the app id) explicitly. It is idempotent and reactivates a revoked grant.
+**Test it by logging in as the created user.** Asserting that they appear on the roster passes
+throughout this bug's life.
+
+**2. Revoking a registration token needs `revocationReason`, not `reason`.**
+`RevokeTokenDto.RevocationReason` is `[Required]`, so the wrong field name fails model validation
+with a 400 — which an app that maps upstream failures to its own status code will surface as a
+confusing 502. A Revoke button can look wired up and have never once worked.
+
+**3. Entitlements are per USER, and a teammate has no subscription.**
+Only the person who bought the plan holds one. `app-tiers/{appId}/service/user-features/{userId}`
+returns an **empty map** for everyone else, and an empty map from a 200 is a real "no access" — so
+every teammate gets `feature_locked` and an upgrade prompt for a plan their team already pays for.
+That makes any seat-based tier unsellable. If your app has teams, fall back to the tenant's
+entitlement when the user's own check fails.
+**Two things people miss.** First, do the same for LIMITS: a member with no subscription has no
+limits either, and "no limits" reads as *unlimited*, so admitting them past the feature gate
+without also metering them leaves seats, daily budgets and record caps binding the buyer alone.
+Second, gate the fallback on the caller belonging to a *real* CompanyClient — see trap 4.
+
+**4. Nothing in a JWT identifies the tenant's owner, and `company_client_id` can lie.**
+The owner of a CompanyClient carries platform role `User` and no `app_role` — claims identical to
+the teammates they invite. The only signal is their **ClientAdmin** role on the `UserCompanyClients`
+row, which the roster exposes. Any "is this person an admin of their tenant" check that reads only
+claims will lock the owner out the moment their team grows past one member.
+Separately: `company_client_id` falls back to `company_id` when the claim is absent, so every
+self-registered user in an app without per-signup client provisioning shares **one bucket**. That
+bucket is not a team. Never inherit entitlement, metering or authority across it — an empty or
+unreadable roster for a shared bucket fails open and hands paid features to everyone in it.
+
+**5. A temporary password does not sign the user in.**
+Login succeeds with **200 and `requiresPasswordReset: true`**, and the SDK holds the user on a
+forced-reset step instead of returning a session. Two consequences: an API-level login check will
+report the account healthy while a real user cannot get past the screen, so test this through the
+UI; and `POST api/auth/reset-password` is `[Authorize]` and identifies the caller **from the JWT**
+(the body carries no email or user id), so the reset must send the session token.
+
 ---
 
 # Deploy
