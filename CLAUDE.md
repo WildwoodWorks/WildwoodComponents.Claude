@@ -26,7 +26,7 @@ Just tell it what you need — setup, integrate, deploy, hosting, database, or s
 
 ## MCP Server Connection
 
-This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io/mcp`. On first connection, a browser window opens for OAuth login at WildwoodAdmin. After authentication, Claude can use 114 MCP tools (53 read, 61 write) to query and fully configure Wildwood apps — including AI providers, auth, payments, themes, CAPTCHA, tiers, add-ons, subscriptions, feedback, consent, third-party scripts, the seeder, app hosting, and database hosting. All write tools require `confirm: true` and auto-snapshot before changes. Run `/wildwood` for the full tool reference and all platform workflows.
+This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io/mcp`. On first connection, a browser window opens for OAuth login at WildwoodAdmin. After authentication, Claude can use 118 MCP tools (56 read, 62 write) to query and fully configure Wildwood apps — including AI providers, auth, payments, themes, CAPTCHA, tiers, add-ons, subscriptions, feedback, consent, campaign attribution, third-party scripts, the seeder, app hosting, and database hosting. All write tools require `confirm: true` and auto-snapshot before changes. Run `/wildwood` for the full tool reference and all platform workflows.
 
 ## SDK Packages
 
@@ -60,13 +60,13 @@ This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io
 | Usage | Usage dashboard + overage summary | React, RN, Blazor, Swift |
 | Seeder | Idempotent server-side app-data seeding with server ledger/history (X-API-Key auth; service key scoped `ai:manage roles:manage tiers:manage`) | Node.js, .NET |
 
-## MCP Tools (114 total)
+## MCP Tools (118 total)
 
 > The tables below list the most-used tools, not every one. The per-section counts are the true
 > totals (verified by counting `[McpServerTool]` in the server's `MCPServerTools/`); the rows are a
 > subset.
 
-### Read Tools (53)
+### Read Tools (56)
 | Tool | Description |
 |------|-------------|
 | `wildwood_get_app_info` | Current app config (name, URLs, IsMCPEnabled) |
@@ -94,6 +94,8 @@ This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io
 | `wildwood_get_feedback_config` | App feedback-widget configuration |
 | `wildwood_get_feedback_analytics` | Feedback volume/trend analytics |
 | `wildwood_get_consent_config` | App cookie/consent configuration |
+| `wildwood_get_attribution_config` | App campaign attribution (UTM / click-id capture) configuration |
+| `wildwood_get_attribution_analytics` | Signups, visits and conversion per campaign (first or last touch) |
 | `wildwood_list_company_scripts` | Company-level third-party scripts |
 | `wildwood_list_app_scripts` | App-level third-party scripts |
 | `wildwood_list_app_settings` | App key/value settings (encrypted values masked) |
@@ -117,7 +119,7 @@ This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io
 | `database_hosting_get_connection` | Npgsql connection string (in-cluster reachable only) |
 | `database_hosting_backup_list` | List `pg_dump` archive backups |
 
-### Write Tools (61) — require `confirm: true`
+### Write Tools (62) — require `confirm: true`
 | Tool | Description |
 |------|-------------|
 | `wildwood_create_app` | Create a new app |
@@ -150,6 +152,7 @@ This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io
 | `wildwood_remove_feature_override` | Remove a feature override |
 | `wildwood_manage_feedback_config` | Create/update the feedback-widget configuration |
 | `wildwood_manage_consent_config` | Create/update the consent configuration (bumps version) |
+| `wildwood_manage_attribution_config` | Create/update campaign attribution capture (window, consent category, beacon) |
 | `wildwood_manage_company_script` | Create/update/delete a company third-party script |
 | `wildwood_manage_app_script` | Create/update/delete an app third-party script |
 | `wildwood_manage_app_setting` | Create/update/delete an app setting (optional encryption at rest) |

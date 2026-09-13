@@ -1903,7 +1903,7 @@ const client = createWildwoodClient({ apiUrl, appId, platform? });
 - Login response: `{ jwtToken, email, firstName, ... }` (no `token` alias, no `user` sub-object)
 - DTO naming: PascalCase (Email, Password, AppId)
 
-## MCP Tools (114 total: 53 read, 61 write)
+## MCP Tools (118 total: 56 read, 62 write)
 
 All write tools require `confirm: true` and auto-snapshot before changes.
 
@@ -1911,7 +1911,7 @@ All write tools require `confirm: true` and auto-snapshot before changes.
 > totals (verified by counting `[McpServerTool]` in the server's `MCPServerTools/`); the rows are a
 > subset.
 
-### Read Tools (53)
+### Read Tools (56)
 
 | Tool | Description |
 |------|-------------|
@@ -1940,6 +1940,8 @@ All write tools require `confirm: true` and auto-snapshot before changes.
 | `wildwood_get_feedback_config` | App feedback-widget configuration |
 | `wildwood_get_feedback_analytics` | Feedback volume/trend analytics |
 | `wildwood_get_consent_config` | App cookie/consent configuration |
+| `wildwood_get_attribution_config` | App campaign attribution (UTM / click-id capture) configuration |
+| `wildwood_get_attribution_analytics` | Signups, visits and conversion per campaign (first or last touch) |
 | `wildwood_list_company_scripts` | Company-level third-party scripts |
 | `wildwood_list_app_scripts` | App-level third-party scripts |
 | `wildwood_list_app_settings` | App key/value settings (encrypted values masked) |
@@ -1963,7 +1965,7 @@ All write tools require `confirm: true` and auto-snapshot before changes.
 | `database_hosting_get_connection` | Npgsql connection string (in-cluster reachable only) |
 | `database_hosting_backup_list` | List `pg_dump` archive backups |
 
-### Write Tools (61)
+### Write Tools (62)
 
 | Tool | Description |
 |------|-------------|
@@ -1996,6 +1998,7 @@ All write tools require `confirm: true` and auto-snapshot before changes.
 | `wildwood_remove_feature_override` | Remove a feature override |
 | `wildwood_manage_feedback_config` | Create/update the feedback-widget configuration |
 | `wildwood_manage_consent_config` | Create/update the consent configuration (bumps version) |
+| `wildwood_manage_attribution_config` | Create/update campaign attribution capture (window, consent category, beacon) |
 | `wildwood_manage_company_script` | Create/update/delete a company third-party script |
 | `wildwood_manage_app_script` | Create/update/delete an app third-party script |
 | `wildwood_manage_app_setting` | Create/update/delete an app setting (optional encryption at rest) |
