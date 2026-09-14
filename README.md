@@ -121,6 +121,7 @@ The core value of the Wildwood platform is **pre-built, production-ready UI comp
 | **Consent** | Cookie-consent banner + third-party script gating | React, React Native, Blazor, Swift |
 | **Notifications** | Toasts, in-app inbox, delivery preferences, web push | React, React Native, Blazor, Swift |
 | **Feedback** | In-app feedback widget with analytics | React, React Native, Blazor, Swift |
+| **Campaign Attribution** | UTM / click-id capture attached to signups, with a per-campaign report | React, React Native, Blazor, Swift |
 | **Seeder** | Idempotent server-side app-data seeding | Node.js, .NET |
 
 ## SDK Packages

@@ -57,6 +57,7 @@ This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io
 | Consent | Cookie-consent banner with preferences + third-party script gating | React, RN, Blazor, Swift |
 | Notifications | Toasts, in-app inbox, delivery preferences, browser/web push | React, RN, Blazor, Swift |
 | Feedback | In-app feedback widget with analytics | React, RN, Blazor, Swift |
+| Campaign Attribution | UTM / click-id / referrer capture attached to signups, with a per-campaign signup and conversion report | React, RN, Blazor, Swift |
 | Usage | Usage dashboard + overage summary | React, RN, Blazor, Swift |
 | Seeder | Idempotent server-side app-data seeding with server ledger/history (X-API-Key auth; service key scoped `ai:manage roles:manage tiers:manage`) | Node.js, .NET |
 
@@ -195,6 +196,7 @@ Each component needs backend configuration before it works in the SDK. Use MCP t
 | Consent config | Yes | — |
 | Third-party scripts | Yes (company + app level) | — |
 | Feedback config | Yes (+ analytics read) | — |
+| Attribution config | Yes (+ campaign analytics read) | — |
 | Documents config & admin files | No MCP tools yet | WildwoodAdmin (per-app config, statistics, file management) |
 | Seeder | Yes (kill-switch/knobs; ledger + history read) | Service-key minting (Service Keys card; scopes `ai:manage roles:manage tiers:manage`) |
 | App settings & MCP toggle | Yes (incl. store URLs, limits) | — |

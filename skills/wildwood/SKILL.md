@@ -864,6 +864,7 @@ Ask which features the user wants. For each, show exact imports and usage.
 | **Consent** | `<ConsentBanner>` | `<ConsentBanner>` | `<ConsentComponent>` | — |
 | **Notifications** | inbox + toasts via `client.notifications` | same | `<NotificationComponent>` | — |
 | **Feedback** | `<FeedbackComponent>` | `<FeedbackComponent>` | `<FeedbackComponent>` | — |
+| **Campaign Attribution** | `useAttribution()` (the provider starts capture) | `useAttribution()` | `<AttributionBootstrap>` (Razor: `<vc:attribution>`) | — |
 | **Seeder** | — | — | — | `runSeeder()` (startup app-data seeding) |
 
 Swift/iOS apps get the same components (31 SwiftUI views + `WildwoodCore`
@@ -1887,12 +1888,12 @@ const client = createWildwoodClient({ apiUrl, appId, platform? });
 - `runSeeder(options, tasks)` — idempotent startup app-data seeding (X-API-Key auth; mint ONE service key with `scopes: "ai:manage roles:manage tiers:manage"` for tier-catalog, AI, and app-roles provisioning tasks; server-side ledger + history — see `references/seeding-and-service-keys.md`)
 
 ### WildwoodComponents.Blazor
-- Components: `<AuthenticationComponent>`, `<AIChatComponent>`, `<AIFlowComponent>`, `<MessagingComponent>`, `<PaymentComponent>`, `<ThemeComponent>`, `<AppTierComponent>`, `<FeatureGateComponent>`, `<DisclaimerComponent>`, `<ConsentComponent>`, `<NotificationComponent>`, `<FeedbackComponent>` (29 components; `WildwoodComponents.Razor` mirrors them as MVC ViewComponents)
+- Components: `<AuthenticationComponent>`, `<AIChatComponent>`, `<AIFlowComponent>`, `<MessagingComponent>`, `<PaymentComponent>`, `<ThemeComponent>`, `<AppTierComponent>`, `<FeatureGateComponent>`, `<DisclaimerComponent>`, `<ConsentComponent>`, `<NotificationComponent>`, `<FeedbackComponent>`, `<AttributionBootstrap>` (29 components; `WildwoodComponents.Razor` mirrors them as MVC ViewComponents)
 - `WildwoodComponents.Shared` hosts the framework-neutral Seeder (`ISeederTask`, `SeederRunner`, auto-startup `SeederRunnerService`)
 
 ### WildwoodComponents.Swift (WildwoodCore + WildwoodSwiftUI)
 - SPM package, iOS 26+, Swift 6 strict concurrency
-- `WildwoodClient` factory mirrors `@wildwood/core` method-for-method: `auth`, `session`, `ai` (+ flows and flow subscriptions), `documents`, `messaging`, `payment`, `appTier`, `twoFactor`, `captcha`, `disclaimer`, `feedback`, `notifications`, `theme`
+- `WildwoodClient` factory mirrors `@wildwood/core` method-for-method: `auth`, `session`, `ai` (+ flows and flow subscriptions), `documents`, `messaging`, `payment`, `appTier`, `twoFactor`, `captcha`, `disclaimer`, `feedback`, `notifications`, `attribution`, `theme`
 - 31 SwiftUI components with `@Observable` view models; tokens stored in the Keychain
 - Payments are processor-agnostic: StoreKit 2 for the App Store path, web checkout for other providers
 
