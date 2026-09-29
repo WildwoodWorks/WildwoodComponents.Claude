@@ -26,7 +26,7 @@ Just tell it what you need — setup, integrate, deploy, hosting, database, or s
 
 ## MCP Server Connection
 
-This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io/mcp`. On first connection, a browser window opens for OAuth login at WildwoodAdmin. After authentication, Claude can use 118 MCP tools (56 read, 62 write) to query and fully configure Wildwood apps — including AI providers, auth, payments, themes, CAPTCHA, tiers, add-ons, subscriptions, feedback, consent, campaign attribution, third-party scripts, the seeder, app hosting, and database hosting. All write tools require `confirm: true` and auto-snapshot before changes. Run `/wildwood` for the full tool reference and all platform workflows.
+This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io/mcp`. On first connection, a browser window opens for OAuth login at WildwoodAdmin. After authentication, Claude can use 123 MCP tools (58 read, 65 write) to query and fully configure Wildwood apps — including AI providers, auth, payments, themes, CAPTCHA, tiers, add-ons, subscriptions, feedback, consent, campaign attribution, third-party scripts, the seeder, app hosting, and database hosting. All write tools require `confirm: true` and auto-snapshot before changes. Run `/wildwood` for the full tool reference and all platform workflows.
 
 ## SDK Packages
 
@@ -57,17 +57,17 @@ This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io
 | Consent | Cookie-consent banner with preferences + third-party script gating | React, RN, Blazor, Swift |
 | Notifications | Toasts, in-app inbox, delivery preferences, browser/web push | React, RN, Blazor, Swift |
 | Feedback | In-app feedback widget with analytics | React, RN, Blazor, Swift |
-| Campaign Attribution | UTM / click-id / referrer capture attached to signups, with a per-campaign signup and conversion report | React, RN, Blazor, Swift |
+| Campaign Attribution | UTM / click-id / referrer capture attached to signups; funnel tracking (page views, scroll depth, engagement, `data-ww-cta` clicks, signup steps); server-side conversions to Reddit, Meta, Google Ads, Microsoft Ads, LinkedIn, TikTok and X; a per-campaign report with funnel, engagement and variants | React, RN, Blazor, Swift |
 | Usage | Usage dashboard + overage summary | React, RN, Blazor, Swift |
 | Seeder | Idempotent server-side app-data seeding with server ledger/history (X-API-Key auth; service key scoped `ai:manage roles:manage tiers:manage`) | Node.js, .NET |
 
-## MCP Tools (118 total)
+## MCP Tools (123 total)
 
 > The tables below list the most-used tools, not every one. The per-section counts are the true
 > totals (verified by counting `[McpServerTool]` in the server's `MCPServerTools/`); the rows are a
 > subset.
 
-### Read Tools (56)
+### Read Tools (58)
 | Tool | Description |
 |------|-------------|
 | `wildwood_get_app_info` | Current app config (name, URLs, IsMCPEnabled) |
@@ -95,8 +95,9 @@ This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io
 | `wildwood_get_feedback_config` | App feedback-widget configuration |
 | `wildwood_get_feedback_analytics` | Feedback volume/trend analytics |
 | `wildwood_get_consent_config` | App cookie/consent configuration |
-| `wildwood_get_attribution_config` | App campaign attribution (UTM / click-id capture) configuration |
-| `wildwood_get_attribution_analytics` | Signups, visits and conversion per campaign (first or last touch) |
+| `wildwood_get_attribution_config` | App campaign attribution configuration (capture, beacon, funnel tracking switches, pre-consent session storage, retention) |
+| `wildwood_get_attribution_analytics` | Per-campaign signups, visits, conversion and revenue, plus funnel, engagement, coverage, destinations and insights |
+| `wildwood_list_attribution_destinations` | Server-side ad-conversion destinations per platform (masked credentials, last success/error) |
 | `wildwood_list_company_scripts` | Company-level third-party scripts |
 | `wildwood_list_app_scripts` | App-level third-party scripts |
 | `wildwood_list_app_settings` | App key/value settings (encrypted values masked) |
@@ -120,7 +121,7 @@ This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io
 | `database_hosting_get_connection` | Npgsql connection string (in-cluster reachable only) |
 | `database_hosting_backup_list` | List `pg_dump` archive backups |
 
-### Write Tools (62) — require `confirm: true`
+### Write Tools (65) — require `confirm: true`
 | Tool | Description |
 |------|-------------|
 | `wildwood_create_app` | Create a new app |
@@ -153,7 +154,9 @@ This plugin connects to the Wildwood MCP server at `https://api.wildwoodworks.io
 | `wildwood_remove_feature_override` | Remove a feature override |
 | `wildwood_manage_feedback_config` | Create/update the feedback-widget configuration |
 | `wildwood_manage_consent_config` | Create/update the consent configuration (bumps version) |
-| `wildwood_manage_attribution_config` | Create/update campaign attribution capture (window, consent category, beacon) |
+| `wildwood_manage_attribution_config` | Create/update campaign attribution (window, consent category, beacon, funnel tracking, custom events, retention) |
+| `wildwood_manage_attribution_destination` | Create/update/delete an ad-conversion destination (Reddit, Meta, GoogleAds, MicrosoftAds, LinkedIn, TikTok, X; encrypted credentials) |
+| `wildwood_test_attribution_destination` | Send a synthetic test-mode conversion to one platform and return its answer |
 | `wildwood_manage_company_script` | Create/update/delete a company third-party script |
 | `wildwood_manage_app_script` | Create/update/delete an app third-party script |
 | `wildwood_manage_app_setting` | Create/update/delete an app setting (optional encryption at rest) |
@@ -196,7 +199,8 @@ Each component needs backend configuration before it works in the SDK. Use MCP t
 | Consent config | Yes | — |
 | Third-party scripts | Yes (company + app level) | — |
 | Feedback config | Yes (+ analytics read) | — |
-| Attribution config | Yes (+ campaign analytics read) | — |
+| Attribution config | Yes (incl. funnel tracking; + campaign analytics read) | — |
+| Conversion destinations (ad platforms) | Yes (create/update/delete, encrypted credentials, test send) | — |
 | Documents config & admin files | No MCP tools yet | WildwoodAdmin (per-app config, statistics, file management) |
 | Seeder | Yes (kill-switch/knobs; ledger + history read) | Service-key minting (Service Keys card; scopes `ai:manage roles:manage tiers:manage`) |
 | App settings & MCP toggle | Yes (incl. store URLs, limits) | — |

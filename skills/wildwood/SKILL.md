@@ -768,6 +768,29 @@ wildwood_manage_tier_pricing(tierId: "...", pricingModelId: "...", confirm: true
 wildwood_manage_subscription_config(isSubscriptionEnabled: true, confirm: true)
 ```
 
+### Campaign attribution: funnel + conversions
+```
+wildwood_manage_attribution_config(             # Capture UTM tags + click ids, count visits
+  isEnabled: true, beaconEnabled: true,
+  funnelTrackingEnabled: true,                  # page views, scroll depth, engagement, CTA clicks, signup steps
+  customEventNames: "demo_booked",              # optional app-defined events for track()
+  sessionStoragePersistenceBeforeConsent: false, confirm: true)
+wildwood_list_attribution_destinations()        # Each platform's settings keys and supported click ids
+wildwood_manage_attribution_destination(        # Server-side conversions (credentials encrypted)
+  provider: "Reddit", isEnabled: true, testMode: true,
+  settingsJson: "{\"pixelId\":\"t2_...\"}", credentialsJson: "{\"accessToken\":\"...\"}", confirm: true)
+wildwood_test_attribution_destination(provider: "Reddit", confirm: true)   # Synthetic test conversion
+wildwood_get_attribution_analytics(days: 30, groupBy: "campaign")          # Funnel, engagement, destinations, insights
+```
+
+The SDK needs no extra code for the standard funnel: `WildwoodProvider` records page views (including SPA
+navigations), scroll depth and engagement, and the registration components report the signup steps. Mark
+calls to action with `data-ww-cta="hero_get_started"` (stable lowercase labels), and call
+`useAttribution().trackCta(label)` for buttons rendered inside a component you cannot annotate. Destinations
+send signups, trials and purchases from the server using the captured click id (`rdt_cid`, `fbclid`,
+`gclid`, ...); turn `testMode` off once the test send succeeds. The full report is in WildwoodAdmin at
+`/admin/analytics/campaignattribution`.
+
 Only configure features the user wants — skip sections that aren't needed.
 
 ## Integrate Step 6: Detect & Align Styling
@@ -864,7 +887,7 @@ Ask which features the user wants. For each, show exact imports and usage.
 | **Consent** | `<ConsentBanner>` | `<ConsentBanner>` | `<ConsentComponent>` | — |
 | **Notifications** | inbox + toasts via `client.notifications` | same | `<NotificationComponent>` | — |
 | **Feedback** | `<FeedbackComponent>` | `<FeedbackComponent>` | `<FeedbackComponent>` | — |
-| **Campaign Attribution** | `useAttribution()` (the provider starts capture) | `useAttribution()` | `<AttributionBootstrap>` (Razor: `<vc:attribution>`) | — |
+| **Campaign Attribution** | `useAttribution()` (the provider starts capture and funnel tracking; `track` / `trackCta` / `flush`) | `useAttribution()` | `<AttributionBootstrap>` (Razor: `<vc:attribution>`) | — |
 | **Seeder** | — | — | — | `runSeeder()` (startup app-data seeding) |
 
 Swift/iOS apps get the same components (31 SwiftUI views + `WildwoodCore`
@@ -1904,7 +1927,7 @@ const client = createWildwoodClient({ apiUrl, appId, platform? });
 - Login response: `{ jwtToken, email, firstName, ... }` (no `token` alias, no `user` sub-object)
 - DTO naming: PascalCase (Email, Password, AppId)
 
-## MCP Tools (118 total: 56 read, 62 write)
+## MCP Tools (123 total: 58 read, 65 write)
 
 All write tools require `confirm: true` and auto-snapshot before changes.
 
@@ -1912,7 +1935,7 @@ All write tools require `confirm: true` and auto-snapshot before changes.
 > totals (verified by counting `[McpServerTool]` in the server's `MCPServerTools/`); the rows are a
 > subset.
 
-### Read Tools (56)
+### Read Tools (58)
 
 | Tool | Description |
 |------|-------------|
@@ -1941,8 +1964,9 @@ All write tools require `confirm: true` and auto-snapshot before changes.
 | `wildwood_get_feedback_config` | App feedback-widget configuration |
 | `wildwood_get_feedback_analytics` | Feedback volume/trend analytics |
 | `wildwood_get_consent_config` | App cookie/consent configuration |
-| `wildwood_get_attribution_config` | App campaign attribution (UTM / click-id capture) configuration |
-| `wildwood_get_attribution_analytics` | Signups, visits and conversion per campaign (first or last touch) |
+| `wildwood_get_attribution_config` | App campaign attribution configuration (capture, beacon, funnel tracking switches, pre-consent session storage, retention) |
+| `wildwood_get_attribution_analytics` | Per-campaign signups, visits, conversion and revenue, plus funnel, engagement, coverage, destinations and insights |
+| `wildwood_list_attribution_destinations` | Server-side ad-conversion destinations per platform (masked credentials, last success/error) |
 | `wildwood_list_company_scripts` | Company-level third-party scripts |
 | `wildwood_list_app_scripts` | App-level third-party scripts |
 | `wildwood_list_app_settings` | App key/value settings (encrypted values masked) |
@@ -1966,7 +1990,7 @@ All write tools require `confirm: true` and auto-snapshot before changes.
 | `database_hosting_get_connection` | Npgsql connection string (in-cluster reachable only) |
 | `database_hosting_backup_list` | List `pg_dump` archive backups |
 
-### Write Tools (62)
+### Write Tools (65)
 
 | Tool | Description |
 |------|-------------|
@@ -1999,7 +2023,9 @@ All write tools require `confirm: true` and auto-snapshot before changes.
 | `wildwood_remove_feature_override` | Remove a feature override |
 | `wildwood_manage_feedback_config` | Create/update the feedback-widget configuration |
 | `wildwood_manage_consent_config` | Create/update the consent configuration (bumps version) |
-| `wildwood_manage_attribution_config` | Create/update campaign attribution capture (window, consent category, beacon) |
+| `wildwood_manage_attribution_config` | Create/update campaign attribution (window, consent category, beacon, funnel tracking, custom events, retention) |
+| `wildwood_manage_attribution_destination` | Create/update/delete an ad-conversion destination (Reddit, Meta, GoogleAds, MicrosoftAds, LinkedIn, TikTok, X; encrypted credentials) |
+| `wildwood_test_attribution_destination` | Send a synthetic test-mode conversion to one platform and return its answer |
 | `wildwood_manage_company_script` | Create/update/delete a company third-party script |
 | `wildwood_manage_app_script` | Create/update/delete an app third-party script |
 | `wildwood_manage_app_setting` | Create/update/delete an app setting (optional encryption at rest) |

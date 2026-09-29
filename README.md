@@ -99,7 +99,7 @@ One command does everything — just tell it what you need:
 
 Connects Claude to the Wildwood API at `api.wildwoodworks.io/mcp` via OAuth 2.1 with PKCE. Supports the native authorization-code flow (RFC 6749), client-id metadata documents (CIMD), resource indicators (RFC 8707), and the device authorization grant (RFC 8628) for headless environments.
 
-Once connected, Claude can query and manage your Wildwood apps directly using 114 MCP tools (53 read, 61 write).
+Once connected, Claude can query and manage your Wildwood apps directly using 123 MCP tools (58 read, 65 write).
 
 ## WildwoodComponents
 
@@ -121,7 +121,7 @@ The core value of the Wildwood platform is **pre-built, production-ready UI comp
 | **Consent** | Cookie-consent banner + third-party script gating | React, React Native, Blazor, Swift |
 | **Notifications** | Toasts, in-app inbox, delivery preferences, web push | React, React Native, Blazor, Swift |
 | **Feedback** | In-app feedback widget with analytics | React, React Native, Blazor, Swift |
-| **Campaign Attribution** | UTM / click-id capture attached to signups, with a per-campaign report | React, React Native, Blazor, Swift |
+| **Campaign Attribution** | UTM / click-id capture attached to signups, funnel tracking (page views, scroll depth, engagement, `data-ww-cta` clicks, signup steps), server-side conversions to ad platforms, and a per-campaign report with the funnel | React, React Native, Blazor, Swift |
 | **Seeder** | Idempotent server-side app-data seeding | Node.js, .NET |
 
 ## SDK Packages
