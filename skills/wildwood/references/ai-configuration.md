@@ -51,6 +51,26 @@ catalog go stale. Before choosing a model id, find one a **currently-working** c
 on the same platform uses, and prefer that. Symptom of a retired id: the relay 400s and the
 provider's error names the model.
 
+## Rule #4: GPT-6 runs on the Responses API — set a reasoning effort, not a temperature
+
+OpenAI's GPT-6 family (`gpt-6-astra`, `gpt-6.1-sol`, `gpt-6.1-terra`, `gpt-6-luna`) only calls
+tools through the **Responses API**. Wildwood routes `gpt-6*` on the `openai` provider there
+automatically (relay, embedded chat, and LangGraph flow nodes); every other model stays on chat
+completions. Responses calls are sent with `store=false` (nothing retained at OpenAI).
+
+- These are **reasoning models**: Wildwood never sends them a temperature (same as o-series and
+  `gpt-5*`), so the config's `temperature` has no effect on them.
+- Tune them with the config's **`reasoningEffort`**: `none | low | medium | high | xhigh | max`
+  (null = model default, `medium`). `low` keeps latency and cost close to a non-reasoning model.
+  On `PUT …/ai/{id}` a null/omitted `reasoningEffort` **leaves the stored value unchanged**;
+  send `"default"` to clear it. `wildwood_manage_ai_config` takes the same `reasoningEffort`.
+- Reasoning tokens count against `maxTokensPerRequest` — budgets sized for a non-reasoning model
+  (≈1000) can truncate short outputs; give single-shot writers a few thousand.
+- `enableWebSearch` on a GPT-6 config uses the Responses `web_search` tool (the old
+  `gpt-4o-search-preview` models are shut down). It still cannot be combined with function tools.
+- `gpt-4.1` / `gpt-4o` leave the API on **2027-01-14**; OpenAI names `gpt-6-luna` as the
+  replacement. Pricing per 1M tokens (in/out): Astra 10/50, Sol 2/10, Terra 1/5, Luna 0.10/0.50.
+
 ## The ensure routes — headless, idempotent provisioning
 
 `PUT api/AppComponentConfigurations/{appId}/ai/ensure` and
